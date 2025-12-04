@@ -7,6 +7,7 @@ import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/userLocalServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.dart';
+import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 import 'package:moto_taxi_digital_mobile/utils/navigationUtils.dart';
 import 'package:get_storage/get_storage.dart';
 
@@ -33,8 +34,8 @@ void main() async{
   // initialisation du GetStorage pour stocker les donnees en local
   await GetStorage.init();
 
-  //chargement du fichier .env
-  await dotenv.load(fileName: ".env");
+  //chargement du fichier .env initialisation globale
+  await AppConfig.initialize();
 
   runApp(ProviderScope(child: MyApplication()));
 }

@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/pages/404/notFound.dart';
 import 'package:moto_taxi_digital_mobile/pages/home/homePage.dart';
+import 'package:moto_taxi_digital_mobile/pages/login/loginPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/phoneNumber/phoneNumberPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/registerPage.dart';
 import 'main.dart';
 import 'pages/intro/appCtrl.dart';
 import 'pages/intro/introPage.dart';
@@ -15,8 +19,8 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
   */
   final authRoutes = [
     GoRoute(
-      path: "/app/home",
-      name: 'home_page',
+      path: "/app/homee",
+      name: 'home_pagee',
       builder: (ctx, state) {
         return HomePage();
       },
@@ -32,6 +36,34 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       name: 'intro_page',
       builder: (ctx, state) {
         return IntroPage();
+      },
+    ),
+    GoRoute(
+      path: "/app/home",
+      name: 'home_page',
+      builder: (ctx, state) {
+        return LoginScreen();
+      },
+    ),
+    GoRoute(
+      path: "/public/register",
+      name: 'register_page',
+      builder: (ctx, state) {
+        return CreateAccountScreen();
+      },
+    ),
+    GoRoute(
+      path: "/public/otp",
+      name: 'otp_page',
+      builder: (ctx, state) {
+        return OTPScreen();
+      },
+    ),
+    GoRoute(
+      path: "/public/pNumber",
+      name: 'pnumber_page',
+      builder: (ctx, state) {
+        return PhoneNumberScreen();
       },
     ),
   ];

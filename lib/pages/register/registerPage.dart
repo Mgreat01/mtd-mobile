@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_taxi_digital_mobile/pages/login/loginPage.dart';
 
 
 class CreateAccountScreen extends StatelessWidget {

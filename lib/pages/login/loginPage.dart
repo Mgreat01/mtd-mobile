@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import '../register/registerPage.dart';
 
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
 
 
   Widget _buildDividerWithText() {

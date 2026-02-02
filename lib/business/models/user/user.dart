@@ -1,28 +1,82 @@
 class User {
   final int? id;
-  final String? name;
+  final String name;
+  final String postnom;
+  final String prenom;
+  final String phone;
+  final String gender;
+  final String birthDate;
+  final String commune;
   final String? email;
+  final String? password;
+  final String role;
+  final String? photo;
   final String? token;
-  final String? role;
-  final String? email_verified_at;
 
-  User({this.id, this.name, this.email, this.token,this.role, this.email_verified_at});
+  User({
+    this.id,
+    required this.name,
+    required this.postnom,
+    required this.prenom,
+    required this.phone,
+    required this.gender,
+    required this.birthDate,
+    required this.commune,
+    this.email,
+    this.password,
+    required this.role,
+    this.photo,
+    this.token,
+  });
 
-  factory User.fromJson(json) => User(
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'postnom': postnom,
+      'prenom': prenom,
+      'phone_number': phone,
+      'gender': gender,
+      'birth_date': birthDate,
+      'commune': commune,
+      'email': email,
+      'password': password,
+      'role': role,
+      'photo_url': photo,
+      'token': token,
+    };
+  }
+
+ Map<String, String> toMultipartFields() {
+    return {
+      'name': name,
+      'postnom': postnom,
+      'prenom': prenom,
+      'phone_number': phone,
+      'gender': gender,
+      'birth_date': birthDate,
+      'commune': commune,
+      'role': role,
+      'email': email ?? '',
+      if (password != null) 'password': password!,
+      if (password != null) 'password_confirmation': password!,
+    };
+  }
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
       id: json['id'],
-      name: json['name'],
+      name: json['name'] ?? '',
+      postnom: json['postnom'] ?? '',
+      prenom: json['prenom'] ?? '',
+      phone: json['phone_number'] ?? '',
+      gender: json['gender'] ?? '',
+      birthDate: json['birth_date'] ?? '',
+      commune: json['commune'] ?? '',
       email: json['email'],
-      email_verified_at: json['email_verified_at'],
-      token : json['token'],
-      role: json['role']
-  );
-
-  Map toJson() => {
-    'id': id,
-    'name': name,
-    'email': email,
-    'email_verified_at': email_verified_at,
-    'token' : token,
-    'role': role
-  };
+      role: json['role'] ?? 'passenger',
+      photo: json['photo_url'],
+      token: json['token'], // 👈 IL MANQUAIT CETTE LIGNE
+    );
+  }
 }

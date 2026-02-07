@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 
-class AccountValidatedScreen extends StatelessWidget {
-  const AccountValidatedScreen({super.key});
+class AccountValidatedPage extends StatelessWidget {
+  const AccountValidatedPage({super.key});
 
   @override
   Widget build(BuildContext context) {

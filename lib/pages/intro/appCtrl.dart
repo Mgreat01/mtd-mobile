@@ -10,7 +10,13 @@ import 'appState.dart';
 class AppCtrl  extends StateNotifier<AppState>{
   var userLocalService=getIt<UserLocalService>();
 
-  AppCtrl() : super(AppState());
+  AppCtrl() : super(AppState()){
+    getUser();
+  }
+
+  void updateUser(User? user) {
+    state = state.copyWith(user: user, error: null);
+  }
 
   Future<void> getUser() async {
     try {

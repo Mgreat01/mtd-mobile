@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
@@ -11,11 +12,16 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   String get baseUrl => AppConfig.apiUrl;
 
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
 
   @override
   Future<User?> login(Authentication authentication) async {
     try {
-      var url = Uri.parse('$baseUrl/login');
+      var url = Uri.parse('$baseUrl/api/loginMobile');
       var data = jsonEncode(authentication.toJson());
 
       final response = await http.post(
@@ -30,8 +36,11 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
       switch (response.statusCode) {
         case 200:
-          final json = jsonDecode(response.body);
-          return User.fromJson(json);
+          final responseData = jsonDecode(response.body);
+          if (responseData['data'] != null) {
+            return User.fromJson(responseData['data']);
+          }
+          throw Exception("Format de données utilisateur inconnu.");
 
         case 400:
           throw Exception("Requête invalide.");
@@ -58,7 +67,6 @@ class UserNetworkServiceImpl implements UserNetworkService {
       throw Exception("Réponse du serveur invalide.");
 
     } catch (e) {
-      /// ❗ Ici on ne remplace pas le message de l’erreur !
       throw Exception(e.toString());
     }
   }
@@ -66,8 +74,108 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
 
   @override
-  Future<bool> verifyOtp(VerifyOtp verifyOtp) {
-    // TODO: implement verifyOtp
-    throw UnimplementedError();
+  Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/verify-otpMobile'),
+        headers: _headers,
+        body: jsonEncode(verifyOtp.toJson()),
+      );
+
+      if (response.statusCode == 200) return true;
+
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? "Code incorrect ou expiré.");
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<User?> registerUser(
+      User user, {
+        File? profilePhoto,
+        File? identityDoc,
+        File? registrationCard,
+        File? businessLicense,
+      }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/registerMobile');
+      print(" Tentative d'envoi à : $url");
+
+      var request = http.MultipartRequest('POST', url);
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Content-Type': 'multipart/form-data',
+      });
+
+      final fields = user.toMultipartFields();
+      fields.forEach((key, value) {
+         request.fields[key] = value?.toString() ?? "";
+      });
+
+     File? fileToUpload;
+      if (profilePhoto != null && await profilePhoto.exists()) {
+        fileToUpload = profilePhoto;
+      } else if (user.photo != null) {
+        final photoFile = File(user.photo!);
+        if (await photoFile.exists()) fileToUpload = photoFile;
+      }
+
+      if (fileToUpload != null) {
+        request.files.add(await http.MultipartFile.fromPath('photo', fileToUpload.path));
+        print(" Photo de profil ajoutée : ${fileToUpload.path}");
+      }
+
+      Future<void> addFileIfValid(String key, File? file) async {
+        if (file != null && await file.exists()) {
+          request.files.add(await http.MultipartFile.fromPath(key, file.path));
+          print("Fichier ajouté [$key] : ${file.path}");
+        }
+      }
+
+      await addFileIfValid('identity_document', identityDoc);
+      await addFileIfValid('registration_card', registrationCard);
+      await addFileIfValid('business_license', businessLicense);
+
+      print(" Envoi de la requête en cours...");
+      var streamedResponse = await request.send().timeout(const Duration(seconds: 40));
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print("Statut Serveur : ${response.statusCode}");
+      print(" Réponse Serveur : ${response.body}");
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return User.fromJson(data['user']);
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? "Erreur serveur (${response.statusCode})");
+      }
+    } on SocketException {
+      throw Exception("Impossible de joindre le serveur. Vérifiez votre connexion ou l'URL.");
+    } on http.ClientException catch (e) {
+      throw Exception("Erreur HTTP : $e");
+    } catch (e) {
+      print(" Erreur critique dans registerUser : $e");
+      rethrow;
+    }
+  }
+
+
+
+  void _handleError(http.Response response) {
+    final body = jsonDecode(response.body);
+    final message = body['message'] ?? "Une erreur est survenue";
+
+    switch (response.statusCode) {
+      case 400: throw Exception("Requête malformée.");
+      case 422:
+        final errors = body['errors'];
+        throw Exception(errors != null ? errors.toString() : message);
+      case 500: throw Exception("Erreur serveur.");
+      default: throw Exception(message);
+    }
   }
 }

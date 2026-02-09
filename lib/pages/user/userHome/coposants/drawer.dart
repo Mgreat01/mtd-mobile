@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/providers/themeProvider.dart';
 
@@ -24,7 +25,7 @@ class AppDrawer extends ConsumerWidget {
                 _buildDrawerItem(
                   icon: Icons.home_filled,
                   label: "Accueil",
-                  onTap: () => ref.read(navigationIndexProvider.notifier).state = 0,
+                  onTap: () => ref.read(navigationIndexProvider.notifier).setIndex(0),
                   theme: theme,
                 ),
                 _buildDrawerItem(
@@ -52,6 +53,15 @@ class AppDrawer extends ConsumerWidget {
                   icon: Icons.help_outline,
                   label: "Aide",
                   onTap: () {},
+                  theme: theme,
+                ),
+                _buildDrawerItem(
+                  icon: Icons.logout,
+                  label: "Deconnexion",
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await ref.read(navigationIndexProvider.notifier).logout();
+                  },
                   theme: theme,
                 ),
               ],

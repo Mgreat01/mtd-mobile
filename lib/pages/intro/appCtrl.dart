@@ -19,7 +19,6 @@ AppCtrl() : super(AppState(isLoading: true)) {
 
   Future<void> getUser() async {
     try {
-      state = state.copyWith(isLoading: true);
 
       var user = await userLocalService.getUser();
       state = state.copyWith(user: user, isLoading: false);
@@ -33,7 +32,7 @@ AppCtrl() : super(AppState(isLoading: true)) {
       state = state.copyWith(isLoading: true);
       await userLocalService.deleteUser();
 
-      state = state.copyWith(user: null, error: null, isLoading: false);
+      state = AppState(user: null, error: null, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
     }

@@ -12,7 +12,7 @@ class AppTheme {
   static const Color borderDark = Color(0xFF374151);     // --color-border-dark
   static const Color textLight = Color(0xFF6B7280);      // --color-text / gray-500
   static const Color textDark = Color(0xFF9CA3AF);        // --color-text-dark / gray-400
-  static const Color primaryDarkAccent = Color(0xFF1D4ED8); // --color-primary-dark (hover)
+  static const Color primaryDarkAccent = Color(0xFF1E8142); // --color-primary-dark (hover)
 
   static final lightTheme = ThemeData(
     useMaterial3: true,

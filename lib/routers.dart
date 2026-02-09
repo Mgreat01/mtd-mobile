@@ -8,6 +8,7 @@ import 'package:moto_taxi_digital_mobile/pages/register/documentPage/kycPage.dar
 import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/phoneNumber/phoneNumberPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'main.dart';
 import 'pages/intro/appCtrl.dart';
 import 'pages/intro/introPage.dart';
@@ -24,6 +25,11 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       path: "/app/homee",
       name: 'home_pagee',
       builder: (ctx, state) => HomePage(),
+    ),
+    GoRoute(
+      path: "/app/introUser",
+      name: 'intro_UserPage',
+      builder: (ctx, state) => const UserHomePage(),
     ),
   ];
 
@@ -80,28 +86,36 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     navigatorKey: navigatorKey,
     debugLogDiagnostics: true,
     initialLocation: "/public/intro",
-    redirect: (context, state) {
-      final appState = ref.watch(appCtrlProvider);
-      final user = appState.user;
-      final error = appState.error;
-      final isLoading = user == null && error == null;
+      redirect: (context, state) {
+        final appState = ref.watch(appCtrlProvider);
+        final user = appState.user;
+        final isLoading = user == null && appState.error == null;
 
-      if (state.matchedLocation == "/public/intro") {
+        if (isLoading) return null;
+
+        if (user != null) {
+          final publicAuthPages = [
+            '/public/login',
+            '/public/register',
+            '/public/pNumber',
+            '/public/otp',
+          ];
+
+          if (publicAuthPages.contains(state.matchedLocation)) {
+            return '/app/introUser';
+          }
+          return null;
+        }
+
+        if (user == null) {
+          if (state.matchedLocation.startsWith('/app/')) {
+            return '/public/login';
+          }
+          return null;
+        }
+
         return null;
-      }
-
-      if (isLoading) return null;
-
-      if (user != null && state.matchedLocation.startsWith("/public")) {
-        return "/public/login";
-      }
-
-      if (user == null && state.matchedLocation.startsWith("/app")) {
-        return "/app/homee";
-      }
-
-      return null;
-    },
+      },
 
     routes: [...noAuthRoutes, ...authRoutes],
     errorBuilder: (context, state) => const NotFoundPage(),

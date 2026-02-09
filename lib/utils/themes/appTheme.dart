@@ -1,4 +1,3 @@
-// lib/utils/themes/app_theme.dart
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -18,19 +17,17 @@ class AppTheme {
   static final lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    colorScheme: ColorScheme.light(
-      primary: primaryLight,
-      onPrimary: textLight, // texte sur fond primary (ex: header)
-      secondary: primaryDarkAccent,
-      background: backgroundLight,
+    colorScheme: const ColorScheme.light(
+      primary: primaryDarkAccent,
+      onPrimary: Colors.white,
       surface: cardLight,
-      onBackground: textLight,
-      onSurface: textLight, // ← texte sur Card, AppBar, ListTile
-      outline: borderLight, // utilisé pour les bordures (ex: TextField)
+      onSurface: textLight,
+      outline: borderLight,
+      secondary: primaryLight,
       error: Colors.red,
     ),
     scaffoldBackgroundColor: backgroundLight,
-    appBarTheme: AppBarTheme(
+    appBarTheme: const AppBarTheme(
       backgroundColor: primaryLight,
       foregroundColor: textLight,
       elevation: 0,
@@ -43,51 +40,55 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: cardLight,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: borderLight),
+        borderSide: const BorderSide(color: borderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: borderLight),
+        borderSide: const BorderSide(color: borderLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryDarkAccent, width: 2),
+        borderSide: const BorderSide(color: primaryDarkAccent, width: 2),
       ),
     ),
-    textTheme: Typography.material2021().englishLike.copyWith(
-      // On force le gris (pas noir) pour coller au web
-      bodyMedium: Typography.material2021().englishLike.bodyMedium?.copyWith(
-        color: textLight,
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryDarkAccent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 0,
       ),
-      titleMedium: Typography.material2021().englishLike.titleMedium?.copyWith(
-        color: textLight,
-        fontWeight: FontWeight.w600,
-      ),
+    ),
+
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(color: textLight),
+      titleMedium: TextStyle(color: textLight, fontWeight: FontWeight.w600),
     ),
   );
 
   static final darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    colorScheme: ColorScheme.dark(
-      primary: primaryDark,
-      onPrimary: textDark,
-      secondary: primaryDarkAccent,
-      background: backgroundDark,
+    colorScheme: const ColorScheme.dark(
+      primary: primaryDarkAccent,
+      onPrimary: Colors.white,
       surface: cardDark,
-      onBackground: textDark,
-      onSurface: textDark, // ← texte clair sur fond sombre
+      onSurface: textDark,
       outline: borderDark,
+      secondary: primaryDark,
       error: Colors.redAccent,
     ),
     scaffoldBackgroundColor: backgroundDark,
-    appBarTheme: AppBarTheme(
+    appBarTheme: const AppBarTheme(
       backgroundColor: primaryDark,
       foregroundColor: textDark,
       elevation: 0,
     ),
+
     cardTheme: CardThemeData(
       color: cardDark,
       elevation: 0,
@@ -96,27 +97,32 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: cardDark,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: borderDark),
+        borderSide: const BorderSide(color: borderDark),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: borderDark),
+        borderSide: const BorderSide(color: borderDark),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryDarkAccent, width: 2),
+        borderSide: const BorderSide(color: primaryDarkAccent, width: 2),
       ),
     ),
-    textTheme: Typography.material2021().englishLike.copyWith(
-      bodyMedium: Typography.material2021().englishLike.bodyMedium?.copyWith(
-        color: textDark,
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryDarkAccent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      titleMedium: Typography.material2021().englishLike.titleMedium?.copyWith(
-        color: textDark,
-        fontWeight: FontWeight.w600,
-      ),
+    ),
+
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(color: textDark),
+      titleMedium: TextStyle(color: textDark, fontWeight: FontWeight.w600),
     ),
   );
 }

@@ -8,6 +8,7 @@ import 'package:moto_taxi_digital_mobile/pages/register/documentPage/kycPage.dar
 import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/phoneNumber/phoneNumberPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/bottom.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'main.dart';
 import 'pages/intro/appCtrl.dart';
@@ -29,7 +30,7 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     GoRoute(
       path: "/app/introUser",
       name: 'intro_UserPage',
-      builder: (ctx, state) => const UserHomePage(),
+      builder: (ctx, state) => const BottomNavBar(),
     ),
   ];
 

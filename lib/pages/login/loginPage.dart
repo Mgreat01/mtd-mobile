@@ -24,8 +24,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus(); // Ferme le clavier
-
+      FocusScope.of(context).unfocus();
       ref.read(loginControllerProvider.notifier).login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -33,15 +32,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  Widget _buildDividerWithText() {
-    return const Row(
+  Widget _buildDividerWithText(ThemeData theme) {
+    return Row(
       children: [
-        Expanded(child: Divider(color: Colors.grey)),
+        Expanded(child: Divider(color: theme.colorScheme.outline.withOpacity(0.3))),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          child: Text('Ou', style: TextStyle(color: Colors.grey)),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text('Ou', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5))),
         ),
-        Expanded(child: Divider(color: Colors.grey)),
+        Expanded(child: Divider(color: theme.colorScheme.outline.withOpacity(0.3))),
       ],
     );
   }
@@ -49,18 +48,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final loginState = ref.watch(loginControllerProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
 
     ref.listen(loginControllerProvider, (previous, next) {
       if (next.isSuccess) {
-        context.go('/app/homee');
+        context.go('/app/introUser');
       }
 
       if (next.error != null && next.error != previous?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.error!),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: colorScheme.error,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(10),
           ),
@@ -69,7 +70,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Center(
@@ -81,38 +82,52 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
                       child: Text(
                         'Se connecter',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ),
 
                     // Champ Email
-                    const Align(alignment: Alignment.centerLeft, child: Text('Email')),
-                    const SizedBox(height: 5),
+                    Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                            'Email',
+                            style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.onSurface)
+                        )
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: Colors.black),
-                      decoration: InputDecoration(
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
                         hintText: "exemple@mail.com",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
                       ),
                       validator: (v) => v!.isEmpty || !v.contains('@') ? 'Entrez un email valide' : null,
                     ),
                     const SizedBox(height: 20),
 
                     // Champ Mot de passe
-                    const Align(alignment: Alignment.centerLeft, child: Text('Mot de passe')),
-                    const SizedBox(height: 5),
+                    Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                            'Mot de passe',
+                            style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.onSurface)
+                        )
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
-                      style: const TextStyle(color: Colors.black),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
+                        hintText: "••••••••",
                       ),
                       validator: (v) => v!.isEmpty ? 'Entrez votre mot de passe' : null,
                     ),
@@ -121,34 +136,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     // Bouton Login
                     SizedBox(
                       width: double.infinity,
+                      height: 55,
                       child: ElevatedButton(
                         onPressed: loginState.isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E8142),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                        style: theme.elevatedButtonTheme.style?.copyWith(
+                          backgroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.disabled)) return colorScheme.outline.withOpacity(0.3);
+                            return const Color(0xFF1E8142);
+                          }),
                         ),
                         child: loginState.isLoading
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('Se connecter', style: TextStyle(color: Colors.white, fontSize: 16)),
+                            ? CircularProgressIndicator(color: colorScheme.onPrimary, strokeWidth: 2)
+                            : const Text('Se connecter', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 30),
-                    _buildDividerWithText(),
+                    _buildDividerWithText(theme),
                     const SizedBox(height: 30),
 
                     // Bouton Google
                     SizedBox(
                       width: double.infinity,
+                      height: 50,
                       child: OutlinedButton(
                         onPressed: () {},
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.outline),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png', height: 20),
                             const SizedBox(width: 10),
-                            const Text('Se connecter avec Google', style: TextStyle(color: Colors.black)),
+                            Text('Google', style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -157,7 +178,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     TextButton(
                       onPressed: () => context.pushNamed('pnumber_page'),
-                      child: const Text('Créer un compte', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                      child: Text(
+                          'Créer un compte',
+                          style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold)
+                      ),
                     ),
                   ],
                 ),

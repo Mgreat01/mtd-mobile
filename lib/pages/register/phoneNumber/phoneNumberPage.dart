@@ -25,8 +25,18 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: theme.appBarTheme.foregroundColor),
+          onPressed: () => context.pop(),
+        ),
+        backgroundColor: Colors.transparent,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -34,19 +44,25 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Bienvenue !',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Choisissez votre type de compte et entrez votre numéro pour commencer.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.grey),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                  ),
                 ),
                 const SizedBox(height: 40),
 
-               Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildAccountTypeCard('PASSAGER', Icons.directions_walk, passagerColor, 'passenger'),
@@ -62,20 +78,20 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
                   controller: _phoneController,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.phone,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2 , color: Colors.black),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    color: colorScheme.onSurface,
+                  ),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.phone_android, color: Colors.grey),
+                    prefixIcon: Icon(Icons.phone_android, color: colorScheme.outline),
                     hintText: '+243 XXX XXX XXX',
                     hintStyle: const TextStyle(letterSpacing: 0, fontWeight: FontWeight.normal, fontSize: 14),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
+                    fillColor: theme.inputDecorationTheme.fillColor,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: passagerColor, width: 2),
+                      borderSide: BorderSide(color: _getCurrentRoleColor(), width: 2),
                     ),
                   ),
                 ),
@@ -87,10 +103,8 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
                   height: 55,
                   child: ElevatedButton(
                     onPressed: _handleNextStep,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E8142),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
+                    style: theme.elevatedButtonTheme.style?.copyWith(
+                      backgroundColor: WidgetStateProperty.all(_getCurrentRoleColor()),
                     ),
                     child: const Text(
                       'Continuer',
@@ -106,8 +120,18 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
     );
   }
 
+  Color _getCurrentRoleColor() {
+    switch (_selectedRole) {
+      case 'biker': return motardColor;
+      case 'owner': return proprietaireColor;
+      default: return passagerColor;
+    }
+  }
+
   Widget _buildAccountTypeCard(String title, IconData icon, Color color, String roleValue) {
     bool isSelected = _selectedRole == roleValue;
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: () => setState(() => _selectedRole = roleValue),
       child: Column(
@@ -116,15 +140,29 @@ class _PhoneNumberPageState extends ConsumerState<PhoneNumberPage> {
             duration: const Duration(milliseconds: 250),
             width: 85, height: 85,
             decoration: BoxDecoration(
-              color: isSelected ? color : Colors.white,
+              color: isSelected ? color : theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isSelected ? color : Colors.grey.shade300, width: 2),
+              border: Border.all(
+                  color: isSelected ? color : theme.colorScheme.outline.withOpacity(0.5),
+                  width: 2
+              ),
               boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 10)] : [],
             ),
-            child: Icon(icon, size: 35, color: isSelected ? Colors.white : Colors.grey.shade600),
+            child: Icon(
+                icon,
+                size: 35,
+                color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6)
+            ),
           ),
           const SizedBox(height: 12),
-          Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: isSelected ? color : Colors.grey.shade700)),
+          Text(
+              title,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  color: isSelected ? color : theme.colorScheme.onSurface.withOpacity(0.8)
+              )
+          ),
         ],
       ),
     );

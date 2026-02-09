@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/providers/themeProvider.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -23,7 +24,7 @@ class AppDrawer extends ConsumerWidget {
                 _buildDrawerItem(
                   icon: Icons.home_filled,
                   label: "Accueil",
-                  onTap: () => Navigator.pop(context),
+                  onTap: () => ref.read(navigationIndexProvider.notifier).state = 0,
                   theme: theme,
                 ),
                 _buildDrawerItem(

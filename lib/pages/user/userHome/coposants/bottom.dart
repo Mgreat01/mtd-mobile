@@ -1,28 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart';
 
-class BottomNavBar extends StatefulWidget {
+class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
 
   @override
-  State<BottomNavBar> createState() => _BottomNavBarState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(navigationIndexProvider);
 
-class _BottomNavBarState extends State<BottomNavBar> {
-  int _currentIndex = 0;
-
-
-  final List<Widget> _pages = [
-    const UserHomePage(),
-    const Center(child: Text("Mes courses")),
-    const Center(child: Text("Profil")),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    final List<Widget> _pages = [
+      const UserHomePage(),
+      const Center(child: Text("Mes courses")),
+      const Center(child: Text("Profil")),
+    ];
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -56,7 +52,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ],
       ),
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _pages,
       ),
       bottomNavigationBar: Container(
@@ -70,7 +66,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
+          currentIndex: currentIndex,
           selectedItemColor: colorScheme.primary,
           unselectedItemColor: colorScheme.onSurface.withOpacity(0.4),
           backgroundColor: colorScheme.surface,
@@ -79,12 +75,15 @@ class _BottomNavBarState extends State<BottomNavBar> {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
           onTap: (index) {
-            setState(() => _currentIndex = index);
+            ref.read(navigationIndexProvider.notifier).state = index;
           },
           items: [
             const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Accueil'),
             BottomNavigationBarItem(
-              icon: Icon(Icons.two_wheeler, size: _currentIndex == 1 ? 32 : 28),
+              icon: Icon(
+                  Icons.two_wheeler,
+                  size: currentIndex == 1 ? 32 : 28
+              ),
               label: 'Mes courses',
             ),
             const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),

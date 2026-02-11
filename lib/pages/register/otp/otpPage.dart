@@ -20,6 +20,14 @@ class _OTPPageState extends ConsumerState<OTPPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _verify() async {
     String otpCode = _controllers.map((c) => c.text).join();
 
@@ -41,7 +49,6 @@ class _OTPPageState extends ConsumerState<OTPPage> {
         if (widget.role == 'passenger') {
           context.go('/public/login');
         } else {
-
           context.go('/public/AccountValidatedPage');
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Compte vérifié. En attente de validation administrative."))
@@ -57,42 +64,74 @@ class _OTPPageState extends ConsumerState<OTPPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
           child: Column(
             children: [
-              const SizedBox(height: 50),
-              const Text('Vérification du code', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              Text(
+                'Vérification du code',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
               const SizedBox(height: 10),
-              Text('Un code a été envoyé à ${widget.email}', textAlign: TextAlign.center),
+              Text(
+                'Un code a été envoyé à ${widget.email}',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
               const SizedBox(height: 40),
-
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, (index) => _buildOtpBox(index)),
+                children: List.generate(6, (index) => _buildOtpBox(index, theme)),
               ),
 
               if (_errorMessage != null) ...[
                 const SizedBox(height: 20),
-                Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.w500),
+                ),
               ],
 
               const SizedBox(height: 50),
 
               SizedBox(
                 width: double.infinity,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _verify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E8142),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  style: theme.elevatedButtonTheme.style?.copyWith(
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.disabled)) return colorScheme.outline.withOpacity(0.3);
+                      return const Color(0xFF1E8142);
+                    }),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Vérifier', style: TextStyle(color: Colors.white)),
+                      ? CircularProgressIndicator(color: colorScheme.onPrimary)
+                      : const Text(
+                    'Vérifier',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -102,7 +141,7 @@ class _OTPPageState extends ConsumerState<OTPPage> {
     );
   }
 
-  Widget _buildOtpBox(int index) {
+  Widget _buildOtpBox(int index, ThemeData theme) {
     return SizedBox(
       width: 45,
       child: TextField(
@@ -111,13 +150,24 @@ class _OTPPageState extends ConsumerState<OTPPage> {
         maxLength: 1,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-          color: Colors.black,
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.onSurface,
         ),
         decoration: InputDecoration(
           counterText: '',
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF1E8142), width: 2)),
+          contentPadding: EdgeInsets.zero,
+          filled: true,
+          fillColor: theme.inputDecorationTheme.fillColor,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.5)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF1E8142), width: 2),
+          ),
         ),
         onChanged: (value) {
           if (value.length == 1 && index < 5) FocusScope.of(context).nextFocus();

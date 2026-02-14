@@ -9,28 +9,34 @@ class UserLocalServiceImpl implements UserLocalService {
   UserLocalServiceImpl({this.box});
 
   @override
-  Future<bool> deleteUser() async{
-    await box?.remove("user");
-    return true ;
-  }
-
-  @override
-  Future<User?> getUser() async{
-    var userJson = await box?.read("user");
-    if(userJson == null ){
-      return null;
-    }
-    var user = User.fromJson(userJson);
-
-    return user;
-  }
-
-  @override
-  Future<bool> saveUser(User user) async{
-    var data = user.toJson();
-    await box?.write("user", jsonEncode(data));
+  Future<bool> deleteUser() async {
+    if (box == null) return false;
+    await box!.remove("user");
     return true;
-
   }
 
+  @override
+  Future<User?> getUser() async {
+    if (box == null) return null;
+
+    var userJson = box!.read("user");
+
+    if (userJson == null) return null;
+
+    if (userJson is String) {
+      return User.fromJson(jsonDecode(userJson));
+    }
+
+    return User.fromJson(userJson);
+  }
+
+  @override
+  Future<bool> saveUser(User user) async {
+    if (box == null) return false;
+
+    var data = user.toJson();
+    await box!.write("user", data);
+
+    return true;
+  }
 }

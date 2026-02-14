@@ -19,7 +19,7 @@ void configureImplementations() {
         () => UserNetworkServiceImpl(),
   );
   getIt.registerLazySingleton<UserLocalService>(
-          () => UserLocalServiceImpl()
+          () => UserLocalServiceImpl(box: GetStorage())
   );
   getIt.registerLazySingleton<NavigationUtils>(() => NavigationUtils());
 }

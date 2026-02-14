@@ -14,23 +14,48 @@ class KycPage extends ConsumerWidget {
     final kycControl = ref.read(kycControllerProvider.notifier);
     final registerState = ref.watch(registerControlProvider);
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Documents KYC"), backgroundColor: Colors.white, elevation: 0),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(
+            "Documents KYC",
+            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold)
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(25),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Veuillez charger les documents requis pour valider votre compte professionnel."),
+            Text(
+              "Veuillez charger les documents requis pour valider votre compte professionnel.",
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
             const SizedBox(height: 30),
-            _buildDocTile("Carte d'identité (CNI)", kycState.identityDoc, () => kycControl.pickDocument('identity')),
-            _buildDocTile("Permis de conduire", kycState.registrationCard, () => kycControl.pickDocument('registration')),
-            _buildDocTile("Document commercial / License", kycState.businessLicense, () => kycControl.pickDocument('business')),
-            const SizedBox(height: 20),
-            _buildSelfieSection(kycState.selfie, () => kycControl.pickDocument('selfie')),
+
+            _buildDocTile(context, "Carte d'identité (CNI)", kycState.identityDoc, () => kycControl.pickDocument('identity')),
+            _buildDocTile(context, "Permis de conduire", kycState.registrationCard, () => kycControl.pickDocument('registration')),
+            _buildDocTile(context, "Document commercial / License", kycState.businessLicense, () => kycControl.pickDocument('business')),
+
+            const SizedBox(height: 30),
+            Center(child: _buildSelfieSection(context, kycState.selfie, () => kycControl.pickDocument('selfie'))),
 
             if (kycState.error != null)
-              Padding(padding: const EdgeInsets.all(8.0), child: Text(kycState.error!, style: const TextStyle(color: Colors.red))),
+              Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(kycState.error!, style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.w500))
+              ),
 
             const SizedBox(height: 40),
             SizedBox(
@@ -38,10 +63,13 @@ class KycPage extends ConsumerWidget {
               height: 55,
               child: ElevatedButton(
                 onPressed: (kycState.isLoading || registerState.isLoading) ? null : () => _handleFinalSubmit(ref, context),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF008E53), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                style: theme.elevatedButtonTheme.style, // Utilise le style de AppTheme
                 child: (kycState.isLoading || registerState.isLoading)
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Finaliser l'inscription", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ? CircularProgressIndicator(color: colorScheme.onPrimary)
+                    : const Text(
+                    "Finaliser l'inscription",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                ),
               ),
             ),
           ],
@@ -57,12 +85,11 @@ class KycPage extends ConsumerWidget {
     final success = await ref.read(kycControllerProvider.notifier).submitKyc(tempUser);
 
     if (success && context.mounted) {
-      // Redirection directe vers le Login (ton /app/home actuel)
       context.go('/app/home');
 
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("Inscription réussie ! Votre dossier est en cours d'examen par nos administrateurs."),
+              content: Text("Inscription réussie ! Votre dossier est en cours d'examen."),
               duration: Duration(seconds: 5),
               backgroundColor: Colors.blueAccent
           )
@@ -70,26 +97,50 @@ class KycPage extends ConsumerWidget {
     }
   }
 
-  Widget _buildDocTile(String label, File? file, VoidCallback onTap) {
+  Widget _buildDocTile(BuildContext context, String label, File? file, VoidCallback onTap) {
+    final theme = Theme.of(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+          color: theme.inputDecorationTheme.fillColor, // Utilise la couleur de fond des inputs
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3))
+      ),
       child: ListTile(
-        title: Text(label, style: const TextStyle(fontSize: 14)),
-        trailing: Icon(file != null ? Icons.check_circle : Icons.upload_file, color: file != null ? Colors.green : Colors.grey),
+        title: Text(
+            label,
+            style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface)
+        ),
+        trailing: Icon(
+            file != null ? Icons.check_circle : Icons.upload_file,
+            color: file != null ? Colors.green : theme.colorScheme.onSurface.withOpacity(0.4)
+        ),
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildSelfieSection(File? selfie, VoidCallback onTap) {
+  Widget _buildSelfieSection(BuildContext context, File? selfie, VoidCallback onTap) {
+    final theme = Theme.of(context);
+
     return Column(
       children: [
-        const Text("Photo de profil (Selfie)"),
-        const SizedBox(height: 10),
+        Text(
+          "Photo de profil (Selfie)",
+          style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+        ),
+        const SizedBox(height: 15),
         GestureDetector(
           onTap: onTap,
-          child: CircleAvatar(radius: 45, backgroundColor: Colors.grey.shade100, backgroundImage: selfie != null ? FileImage(selfie) : null, child: selfie == null ? const Icon(Icons.camera_alt) : null),
+          child: CircleAvatar(
+              radius: 50,
+              backgroundColor: theme.inputDecorationTheme.fillColor,
+              backgroundImage: selfie != null ? FileImage(selfie) : null,
+              child: selfie == null
+                  ? Icon(Icons.camera_alt, size: 30, color: theme.colorScheme.onSurface.withOpacity(0.5))
+                  : null
+          ),
         ),
       ],
     );

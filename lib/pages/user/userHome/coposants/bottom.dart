@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
-import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart'; // Import important
 
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentIndex = ref.watch(navigationIndexProvider);
-
+    final index = ref.watch(navigationIndexProvider);
+    final userRole = ref.watch(appCtrlProvider).user?.role ?? 'passenger';
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    final List<Widget> _pages = [
-      const UserHomePage(),
-      const Center(child: Text("Mes courses")),
-      const Center(child: Text("Profil")),
-    ];
+    // 1. Définition des pages selon le rôle
+    final List<Widget> pages = userRole == 'biker'
+        ? [const BikerPage(), const Center(child: Text("Revenus")), const Center(child: Text("Profil"))]
+        : [const UserHomePage(), const Center(child: Text("Mes Courses")), const Center(child: Text("Promo"))];
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
+
       drawer: const AppDrawer(),
+
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -33,61 +35,33 @@ class BottomNavBar extends ConsumerWidget {
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        title: Text(
-          'MOTO TAXI',
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
         actions: [
           _buildCircleAction(
-            icon: Icons.notifications,
+            icon: Icons.notifications_none,
             theme: theme,
             onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
       ),
+
       body: IndexedStack(
-        index: currentIndex,
-        children: _pages,
+        index: index,
+        children: pages,
       ),
+
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
         ),
         child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          selectedItemColor: colorScheme.primary,
-          unselectedItemColor: colorScheme.onSurface.withOpacity(0.4),
-          backgroundColor: colorScheme.surface,
+          currentIndex: index,
+          onTap: (val) => ref.read(navigationIndexProvider.notifier).setIndex(val),
+          selectedItemColor: const Color(0xFF1E8142),
+          unselectedItemColor: Colors.grey,
           showUnselectedLabels: true,
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          onTap: (index) {
-            ref.read(navigationIndexProvider.notifier).state = index;
-          },
-          items: [
-            const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Accueil'),
-            BottomNavigationBarItem(
-              icon: Icon(
-                  Icons.two_wheeler,
-                  size: currentIndex == 1 ? 32 : 28
-              ),
-              label: 'Mes courses',
-            ),
-            const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-          ],
+          items: userRole == 'biker' ? _bikerItems() : _passengerItems(),
         ),
       ),
     );
@@ -106,5 +80,21 @@ class BottomNavBar extends ConsumerWidget {
         onPressed: onPressed,
       ),
     );
+  }
+
+  List<BottomNavigationBarItem> _bikerItems() {
+    return const [
+      BottomNavigationBarItem(icon: Icon(Icons.motorcycle), label: "Service"),
+      BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Revenus"),
+      BottomNavigationBarItem(icon: Icon(Icons.person), label: "Compte"),
+    ];
+  }
+
+  List<BottomNavigationBarItem> _passengerItems() {
+    return const [
+      BottomNavigationBarItem(icon: Icon(Icons.home), label: "Accueil"),
+      BottomNavigationBarItem(icon: Icon(Icons.history), label: "Activités"),
+      BottomNavigationBarItem(icon: Icon(Icons.local_offer), label: "Promos"),
+    ];
   }
 }

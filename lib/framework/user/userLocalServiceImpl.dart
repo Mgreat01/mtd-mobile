@@ -36,6 +36,7 @@ class UserLocalServiceImpl implements UserLocalService {
 
     var data = user.toJson();
     await box!.write("user", data);
+    await box!.write("token", user.token);
 
     return true;
   }

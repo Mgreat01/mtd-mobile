@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart'; // Import important
@@ -18,6 +19,8 @@ class BottomNavBar extends ConsumerWidget {
     // 1. Définition des pages selon le rôle
     final List<Widget> pages = userRole == 'biker'
         ? [const BikerPage(), const Center(child: Text("Revenus")), const Center(child: Text("Profil"))]
+        : userRole == 'owner'
+        ? [const OwnerHomePage(), const Center(child: Text("Liste Motos")), const Center(child: Text("Stats Globales"))]
         : [const UserHomePage(), const Center(child: Text("Mes Courses")), const Center(child: Text("Promo"))];
 
     return Scaffold(
@@ -61,8 +64,11 @@ class BottomNavBar extends ConsumerWidget {
           unselectedItemColor: Colors.grey,
           showUnselectedLabels: true,
           type: BottomNavigationBarType.fixed,
-          items: userRole == 'biker' ? _bikerItems() : _passengerItems(),
-        ),
+          items: userRole == 'biker'
+              ? _bikerItems()
+              : userRole == 'owner'
+              ? _ownerItems()
+              : _passengerItems(),        ),
       ),
     );
   }
@@ -80,6 +86,14 @@ class BottomNavBar extends ConsumerWidget {
         onPressed: onPressed,
       ),
     );
+  }
+
+  List<BottomNavigationBarItem> _ownerItems() {
+    return const [
+      BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
+      BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: "Motos"),
+      BottomNavigationBarItem(icon: Icon(Icons.analytics), label: "Stats"),
+    ];
   }
 
   List<BottomNavigationBarItem> _bikerItems() {

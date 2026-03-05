@@ -1,7 +1,5 @@
 
-
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
-
 class ProfileState {
   final bool loading;
   final User? user;

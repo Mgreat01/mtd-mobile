@@ -4,13 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moto_taxi_digital_mobile/MyApplication.dart';
 import 'package:moto_taxi_digital_mobile/business/services/bike/bikeService.dart';
-import 'package:moto_taxi_digital_mobile/business/services/user/ProfileUserService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/owner/ownerService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:moto_taxi_digital_mobile/framework/bike/bikeServiceImpl.dart';
-import 'package:moto_taxi_digital_mobile/framework/user/ProfileUserServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/biker/bikerServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/owner/ownerServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/userLocalServiceImpl.dart';
@@ -40,9 +38,6 @@ void configureImplementations() {
         () => BikeServiceImpl(),
   );
 
-  getIt.registerLazySingleton<ProfileUserService>(
-      () => ProfileUserServiceImpl(),
-  );
   getIt.registerLazySingleton<NavigationUtils>(() => NavigationUtils());
 }
 

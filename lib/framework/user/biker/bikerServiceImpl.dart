@@ -22,7 +22,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Biker>> getAllBikers() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers'),
+      Uri.parse('$baseUrl/bikers'),
     );
 
     final data = jsonDecode(response.body);
@@ -34,7 +34,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<Biker> getBikerById(int id) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/$id'),
+      Uri.parse('$baseUrl/bikers/$id'),
     );
 
     return Biker.fromJson(jsonDecode(response.body));
@@ -43,7 +43,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<void> deleteBiker(int id) async {
     await http.delete(
-      Uri.parse('$baseUrl/api/bikers/$id'),
+      Uri.parse('$baseUrl/bikers/$id'),
       headers:  _headers(tokens),
     );
   }
@@ -51,7 +51,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<dynamic>> getBikerRaces(int bikerId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/$bikerId/races'),
+      Uri.parse('$baseUrl/bikers/$bikerId/races'),
       headers:  _headers(tokens),
     );
 
@@ -63,7 +63,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Biker>> getAvailableBikers() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/available'),
+      Uri.parse('$baseUrl/bikers/available'),
       headers:  _headers(tokens),
     );
 
@@ -76,7 +76,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<dynamic> getBalance() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/wallets/balance'),
+      Uri.parse('$baseUrl/wallets/balance'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);
@@ -86,7 +86,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Race>> getCourses() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/races'),
+      Uri.parse('$baseUrl/bikers/races'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);
@@ -100,7 +100,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future getPrices() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/price-lists'),
+      Uri.parse('$baseUrl/price-lists'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);

@@ -77,7 +77,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
   Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/verify-otpMobile'),
+        Uri.parse('$baseUrl/verify-otpMobile'),
         headers: _headers,
         body: jsonEncode(verifyOtp.toJson()),
       );
@@ -100,7 +100,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
         File? businessLicense,
       }) async {
     try {
-      final url = Uri.parse('$baseUrl/api/registerMobile');
+      final url = Uri.parse('$baseUrl/register');
       print(" Tentative d'envoi à : $url");
 
       var request = http.MultipartRequest('POST', url);
@@ -177,5 +177,11 @@ class UserNetworkServiceImpl implements UserNetworkService {
       case 500: throw Exception("Erreur serveur.");
       default: throw Exception(message);
     }
+  }
+  
+  @override
+  Future<User?> getUserProfile(String token) {
+    // TODO: implement getUserProfile
+    throw UnimplementedError();
   }
 }

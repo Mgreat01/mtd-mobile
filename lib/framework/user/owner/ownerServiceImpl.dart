@@ -20,7 +20,7 @@ class OwnerServiceImpl implements OwnerService {
   @override
   Future<Bike> getAssignatedBike() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikes/assigned'),
+      Uri.parse('$baseUrl/bikes/assigned'),
       headers: _headers(tokens)
     );
 
@@ -31,7 +31,7 @@ class OwnerServiceImpl implements OwnerService {
   @override
   Future<List<Bike>> getAvailableBike() async {
     final response = await http.get(
-        Uri.parse('$baseUrl/api/bikes/available'),
+        Uri.parse('$baseUrl/bikes/available'),
         headers: _headers(tokens)
     );
 
@@ -44,7 +44,7 @@ class OwnerServiceImpl implements OwnerService {
   @override
   Future<List<Bike>> getByOwner() async {
     final response = await http.get(
-        Uri.parse('$baseUrl/api/bikes/owners'),
+        Uri.parse('$baseUrl/bikes/owners'),
         headers: _headers(tokens)
     );
 
@@ -58,7 +58,7 @@ class OwnerServiceImpl implements OwnerService {
   @override
   Future<Map<String, dynamic>> stat() async {
     final response = await http.get(
-        Uri.parse('$baseUrl/api/bikes/stats'),
+        Uri.parse('$baseUrl/bikes/stats'),
         headers: _headers(tokens)
     );
 

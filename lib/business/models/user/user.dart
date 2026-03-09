@@ -42,7 +42,7 @@ class User {
       'email': email,
       'password': password,
       'role': role,
-      'photo_url': photo,
+      'photo': photo,
       'token': token,
     };
   }
@@ -57,6 +57,7 @@ class User {
       'birth_date': birthDate,
       'commune': commune,
       'role': role,
+      'photo' : ?photo,
       'email': email ?? '',
       if (password != null) 'password': password!,
       if (password != null) 'password_confirmation': password!,
@@ -75,8 +76,8 @@ class User {
       commune: json['commune'] ?? '',
       email: json['email'],
       role: json['role'] ?? 'passenger',
-      photo: json['photo_url'],
-      token: json['token'], // 👈 IL MANQUAIT CETTE LIGNE
+      photo: json['photo'],
+      token: json['token'],
     );
   }
 }

@@ -1,45 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-
-class UserHomePage extends StatelessWidget {
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/RaceTrackingPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
+class UserHomePage extends ConsumerWidget {
   const UserHomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    final state = ref.watch(userHomeControllerProvider);
+    final notifier = ref.read(userHomeControllerProvider.notifier);
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Stack(
-      children: [
-        // 1. CARTE INTERACTIVE
-        _buildInteractiveMap(colorScheme),
+    if (state.currentRace != null) {
+      return const RaceTrackingPage();
+    }
 
-        // 2. BARRE DE RECHERCHE FLOTTANTE
-        Positioned(
-          top: 120,
-          left: 20,
-          right: 20,
-          child: _buildSearchBar(theme),
-        ),
+    return Scaffold(
+      body: Stack(
+        children: [
+          _buildInteractiveMap(state, notifier, colorScheme),
 
-        // 3. CARTE DE RÉSERVATION INFÉRIEURE
-        Positioned(
-          bottom: 30,
-          left: 20,
-          right: 20,
-          child: _buildBookingCard(theme),
-        ),
-      ],
+          Positioned(
+            top: 120,
+            left: 20,
+            right: 20,
+            child: _buildSearchBar(theme),
+          ),
+
+          Positioned(
+            bottom: 30,
+            left: 20,
+            right: 20,
+            child: _buildBookingCard(theme, state, notifier),
+          ),
+
+          if (state.isLoading)
+            Container(
+              color: Colors.black26,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildInteractiveMap(ColorScheme colorScheme) {
-    final LatLng myLocation = LatLng(-4.322447, 15.307045);
-
+  Widget _buildInteractiveMap(UserHomeState state, UserHomeController notifier, ColorScheme colorScheme) {
     return FlutterMap(
       options: MapOptions(
-        initialCenter: myLocation,
+        initialCenter: state.myLocation,
         initialZoom: 15.0,
       ),
       children: [
@@ -50,13 +64,51 @@ class UserHomePage extends StatelessWidget {
         MarkerLayer(
           markers: [
             Marker(
-              point: myLocation,
+              point: state.myLocation,
               width: 60,
               height: 60,
               child: _buildUserLocationMarker(colorScheme),
             ),
-            _buildMotoMarker(LatLng(-4.324, 15.308)),
-            _buildMotoMarker(LatLng(-4.320, 15.305)),
+
+            ...state.nearbyBikers.map((biker) {
+              final isSelected = state.selectedBiker?.id == biker.id;
+
+              return Marker(
+                point: biker.position,
+                width: 60,
+                height: 60,
+                child: GestureDetector(
+                  onTap: () => notifier.selectBiker(biker),
+                  child: Column(
+                    children: [
+                      if (isSelected)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          margin: const EdgeInsets.only(bottom: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.green, width: 1),
+                            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                          ),
+                          child: Text(
+                            biker.name,
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
+                        ),
+                      Image.asset(
+                        'assets/moto.png',
+                        width: 40,
+                        height: 40,
+                       color: isSelected ? Colors.green : null,
+                        colorBlendMode: isSelected ? BlendMode.srcIn : null,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.two_wheeler, size: 30),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ],
@@ -71,7 +123,7 @@ class UserHomePage extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.2),
+            color: colorScheme.primary.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
         ),
@@ -85,15 +137,6 @@ class UserHomePage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Marker _buildMotoMarker(LatLng position) {
-    return Marker(
-      point: position,
-      width: 35,
-      height: 35,
-      child: const Icon(Icons.two_wheeler, color: Colors.black87, size: 28),
     );
   }
 
@@ -118,7 +161,7 @@ class UserHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBookingCard(ThemeData theme) {
+  Widget _buildBookingCard(ThemeData theme, UserHomeState state, UserHomeController notifier) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -139,21 +182,29 @@ class UserHomePage extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 15),
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Départ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    const Text('Ma position actuelle', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 15),
-                    const Text('Destination', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text('...', style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4))),
+                    Text('Départ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Text('Ma position actuelle', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 15),
+                    Text('Destination', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Text('Gombe, Kinshasa', style: TextStyle(fontSize: 14, color: Colors.black87)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
+
+          // Infos sur le biker sélectionné
+          if (state.selectedBiker != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: Text("Motard sélectionné : ${state.selectedBiker!.name}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            ),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -170,7 +221,15 @@ class UserHomePage extends StatelessWidget {
                 ),
               ),
               ElevatedButton(
-                onPressed: () {},
+                // Action du bouton
+                onPressed: state.selectedBiker == null
+                    ? null // Désactivé si aucun biker n'est choisi
+                    : () {
+                  notifier.confirmBooking(
+                    destinationName: "Gombe, Kinshasa",
+                    priceListId: 1, // ID à récupérer dynamiquement si besoin
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF008E53),
                   foregroundColor: Colors.white,
@@ -178,7 +237,10 @@ class UserHomePage extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   elevation: 0,
                 ),
-                child: const Text('Réserver', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(
+                    state.selectedBiker == null ? 'Choisir un motard' : 'Réserver',
+                    style: const TextStyle(fontWeight: FontWeight.bold)
+                ),
               ),
             ],
           ),

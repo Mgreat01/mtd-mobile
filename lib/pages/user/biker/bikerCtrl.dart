@@ -55,12 +55,11 @@ class BikerController extends StateNotifier<BikerState> {
       Position lastKnown = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high
       );
-      state = state.copyWith(
-        currentPosition: LatLng(lastKnown.latitude, lastKnown.longitude),
-      );
+      _sendPositionToServer(lastKnown); // Envoi initial
     } catch (e) {
-      print("Impossible d'avoir la position initiale : $e");
+      print("GPS Error: $e");
     }
+
 
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -68,15 +67,34 @@ class BikerController extends StateNotifier<BikerState> {
         distanceFilter: 5,
       ),
     ).listen((Position position) {
-      state = state.copyWith(
-        currentPosition: LatLng(position.latitude, position.longitude),
-      );
+      _sendPositionToServer(position);
     });
   }
 
-  void _stopLocationTracking() {
+Future<void> _sendPositionToServer(Position position) async {
+    state = state.copyWith(
+      currentPosition: LatLng(position.latitude, position.longitude),
+    );
+
+
+    if (state.isOnline) {
+      await _bikerService.updateLocation(
+        lat: position.latitude,
+        lng: position.longitude,
+        isActive: true,
+      );
+    }
+  }
+
+void _stopLocationTracking() {
     _positionSubscription?.cancel();
     _positionSubscription = null;
+
+   _bikerService.updateLocation(
+      lat: state.currentPosition.latitude,
+      lng: state.currentPosition.longitude,
+      isActive: false,
+    );
   }
 
    Future<void> refreshData() async {

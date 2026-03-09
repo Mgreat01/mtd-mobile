@@ -21,7 +21,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
   @override
   Future<User?> login(Authentication authentication) async {
     try {
-      var url = Uri.parse('$baseUrl/login');
+      var url = Uri.parse('$baseUrl/api/login');
       var data = jsonEncode(authentication.toJson());
 
       final response = await http.post(

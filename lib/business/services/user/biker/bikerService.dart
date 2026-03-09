@@ -1,5 +1,6 @@
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/biker/biker.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 
 abstract class BikerService {
   Future<List<Biker>> getAllBikers();
@@ -10,4 +11,6 @@ abstract class BikerService {
   Future <dynamic> getBalance();
   Future <List<Race>> getCourses();
   Future <dynamic> getPrices();
+  Future<void> updateLocation({required double lat, required double lng, required bool isActive});
+  Future<List<BikerMarkerData>> getActiveBikers();
 }

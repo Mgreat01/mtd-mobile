@@ -27,8 +27,7 @@ class LoginController extends StateNotifier<LoginState> {
       if (user != null && user.token != null) {
         await _localService.saveUser(user);
         ref.read(appCtrlProvider.notifier).updateUser(user);
-
-        state = state.copyWith(isLoading: false, isSuccess: true);
+        state = state.copyWith(isLoading: false, isSuccess: true,user: user);
       } else {
         state = state.copyWith(
           isLoading: false,
@@ -70,6 +69,17 @@ class LoginController extends StateNotifier<LoginState> {
       state = state.copyWith(user: user);
     } catch (e) {
       print("Erreur lors du chargement de l'utilisateur local: $e");
+    }
+  }
+
+  Future<void> clearUser() async {
+    try {
+      state = state.copyWith(isLoading: true);
+      await _localService.deleteUser();
+
+      state = const LoginState(user: null, error: null, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
     }
   }
 }

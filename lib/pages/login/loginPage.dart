@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
+import 'package:moto_taxi_digital_mobile/utils/themes/appTheme.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -34,6 +35,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Widget _buildDividerWithText(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Row(
       children: [
         Expanded(
@@ -53,13 +56,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: isDark ? AppTheme.cardDark : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             'OU',
             style: TextStyle(
-              color: const Color(0xFF64748B),
+              color: isDark ? AppTheme.textDark : const Color(0xFF64748B),
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,
@@ -87,7 +90,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final loginState = ref.watch(loginControllerProvider);
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
+    final isDark = theme.brightness == Brightness.dark;
 
     ref.listen(loginControllerProvider, (previous, next) {
       if (next.isSuccess) {
@@ -116,7 +119,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ],
             ),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: theme.colorScheme.error,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -128,15 +131,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF8FAFC),
-              Color(0xFFECFDF5),
-              Color(0xFFF0FDF4),
-            ],
+            colors: isDark
+                ? [
+                    AppTheme.primaryDark,
+                    AppTheme.primaryDark.withOpacity(0.8),
+                    AppTheme.cardDark,
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFECFDF5),
+                    const Color(0xFFF0FDF4),
+                  ],
           ),
         ),
         child: SafeArea(
@@ -153,7 +162,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo / Icône - réduit
+                      // Logo / Icône
                       Center(
                         child: Container(
                           width: 60,
@@ -170,7 +179,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF22C55E).withOpacity(0.2),
+                                color: isDark 
+                                    ? Colors.black.withOpacity(0.3)
+                                    : const Color(0xFF22C55E).withOpacity(0.2),
                                 blurRadius: 16,
                                 offset: const Offset(0, 8),
                               ),
@@ -186,16 +197,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       
                       const SizedBox(height: 20),
 
-                      // Header avec titre et sous-titre - réduit
+                      // Header avec titre et sous-titre
                       Center(
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               'Bienvenue !',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 letterSpacing: -1,
                               ),
                             ),
@@ -204,7 +215,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               'Connectez-vous',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: const Color(0xFF64748B),
+                                color: isDark ? AppTheme.textDark : const Color(0xFF64748B),
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -214,15 +225,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       
                       const SizedBox(height: 24),
 
-                      // Card contenant le formulaire - padding réduit
+                      // Card contenant le formulaire
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? AppTheme.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withOpacity(0.04),
+                              color: isDark 
+                                  ? Colors.black.withOpacity(0.3)
+                                  : const Color(0xFF0F172A).withOpacity(0.04),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
@@ -233,19 +246,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Champ Email
-                            _buildLabel('Email', Icons.mail_outline_rounded),
+                            _buildLabel('Email', Icons.mail_outline_rounded, isDark),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 fontWeight: FontWeight.w500,
                               ),
                               decoration: _buildInputDecoration(
                                 hintText: "exemple@mail.com",
                                 prefixIcon: Icons.alternate_email_rounded,
+                                isDark: isDark,
                               ),
                               validator: (v) => v!.isEmpty || !v.contains('@') ? 'Email invalide' : null,
                             ),
@@ -253,25 +267,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             const SizedBox(height: 16),
 
                             // Champ Mot de passe
-                            _buildLabel('Mot de passe', Icons.lock_outline_rounded),
+                            _buildLabel('Mot de passe', Icons.lock_outline_rounded, isDark),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 fontWeight: FontWeight.w500,
                               ),
                               decoration: _buildInputDecoration(
                                 hintText: "••••••••",
                                 prefixIcon: Icons.key_rounded,
+                                isDark: isDark,
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword 
                                       ? Icons.visibility_outlined 
                                       : Icons.visibility_off_outlined,
-                                    color: const Color(0xFF94A3B8),
+                                    color: isDark ? AppTheme.textDark : const Color(0xFF94A3B8),
                                     size: 20,
                                   ),
                                   onPressed: () {
@@ -286,7 +301,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               validator: (v) => v!.isEmpty ? 'Mot de passe requis' : null,
                             ),
 
-                            // Lien mot de passe oublié - réduit
+                            // Lien mot de passe oublié
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
@@ -296,10 +311,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Mot de passe oublié ?',
                                   style: TextStyle(
-                                    color: Color(0xFF16A34A),
+                                    color: AppTheme.primaryDarkAccent,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 12,
                                   ),
@@ -309,20 +324,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                             const SizedBox(height: 8),
 
-                            // Bouton Login - hauteur réduite
+                            // Bouton Login
                             SizedBox(
                               width: double.infinity,
                               height: 48,
                               child: ElevatedButton(
                                 onPressed: loginState.isLoading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF16A34A),
+                                  backgroundColor: AppTheme.primaryDarkAccent,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
-                                  disabledBackgroundColor: const Color(0xFFCBD5E1),
+                                  disabledBackgroundColor: isDark 
+                                      ? AppTheme.textDark.withOpacity(0.3)
+                                      : const Color(0xFFCBD5E1),
                                 ),
                                 child: loginState.isLoading
                                     ? SizedBox(
@@ -359,19 +376,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       
                       const SizedBox(height: 20),
 
-                      // Bouton Google - hauteur réduite
+                      // Bouton Google
                       SizedBox(
                         width: double.infinity,
                         height: 48,
                         child: OutlinedButton(
                           onPressed: () {},
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                            side: BorderSide(
+                              color: isDark ? AppTheme.borderDark : const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF0F172A),
+                            backgroundColor: isDark ? AppTheme.cardDark : Colors.white,
+                            foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -379,14 +399,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               Image.asset(
                                 'assets/images/logoGoogle.png',
                                 height: 20,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.g_mobiledata,
+                                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                    size: 24,
+                                  );
+                                },
                               ),
                               const SizedBox(width: 10),
-                              const Text(
+                              Text(
                                 'Google',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
-                                  color: Color(0xFF1E293B),
+                                  color: isDark ? Colors.white : const Color(0xFF1E293B),
                                 ),
                               ),
                             ],
@@ -396,12 +423,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       
                       const SizedBox(height: 20),
 
-                      // Lien création de compte - plus compact
+                      // Lien création de compte
                       Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: isDark ? AppTheme.cardDark : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(30),
                           ),
                           child: Row(
@@ -410,7 +437,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               Text(
                                 "Nouveau ?",
                                 style: TextStyle(
-                                  color: const Color(0xFF64748B),
+                                  color: isDark ? AppTheme.textDark : const Color(0xFF64748B),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -418,10 +445,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               const SizedBox(width: 4),
                               GestureDetector(
                                 onTap: () => context.pushNamed('pnumber_page'),
-                                child: const Text(
+                                child: Text(
                                   'Créer un compte',
                                   style: TextStyle(
-                                    color: Color(0xFF16A34A),
+                                    color: AppTheme.primaryDarkAccent,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                   ),
@@ -442,16 +469,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Widget _buildLabel(String text, IconData icon) {
+  Widget _buildLabel(String text, IconData icon, bool isDark) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF64748B)),
+        Icon(
+          icon, 
+          size: 16, 
+          color: isDark ? AppTheme.textDark : const Color(0xFF64748B),
+        ),
         const SizedBox(width: 6),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: Color(0xFF334155),
+            color: isDark ? Colors.white : const Color(0xFF334155),
             fontSize: 13,
           ),
         ),
@@ -462,18 +493,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   InputDecoration _buildInputDecoration({
     required String hintText,
     required IconData prefixIcon,
+    required bool isDark,
     Widget? suffixIcon,
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(
-        color: Color(0xFFCBD5E1),
+      hintStyle: TextStyle(
+        color: isDark ? AppTheme.textDark.withOpacity(0.5) : const Color(0xFFCBD5E1),
         fontSize: 13,
         fontWeight: FontWeight.w400,
       ),
       prefixIcon: Padding(
         padding: const EdgeInsets.only(left: 14, right: 8),
-        child: Icon(prefixIcon, color: const Color(0xFF94A3B8), size: 18),
+        child: Icon(
+          prefixIcon, 
+          color: isDark ? AppTheme.textDark : const Color(0xFF94A3B8), 
+          size: 18,
+        ),
       ),
       prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       suffixIcon: suffixIcon != null 
@@ -484,26 +520,35 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           : null,
       suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       filled: true,
-      fillColor: const Color(0xFFF8FAFC),
+      fillColor: isDark ? AppTheme.cardDark : const Color(0xFFF8FAFC),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+        borderSide: BorderSide(
+          color: isDark ? AppTheme.borderDark : const Color(0xFFE2E8F0), 
+          width: 1,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF22C55E), width: 2),
+        borderSide: const BorderSide(color: AppTheme.primaryDarkAccent, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+        borderSide: BorderSide(
+          color: isDark ? Colors.redAccent : const Color(0xFFEF4444), 
+          width: 1.5,
+        ),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+        borderSide: BorderSide(
+          color: isDark ? Colors.redAccent : const Color(0xFFEF4444), 
+          width: 2,
+        ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       isDense: true,

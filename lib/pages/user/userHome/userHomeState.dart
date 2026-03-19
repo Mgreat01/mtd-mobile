@@ -18,6 +18,7 @@ class UserHomeState {
   final Race? currentRace;
   final UserStep step;
   final bool isLoading;
+  final String? currentAddress;
 
   UserHomeState({
     required this.myLocation,
@@ -26,6 +27,7 @@ class UserHomeState {
     this.currentRace,
     this.step = UserStep.searching,
     this.isLoading = false,
+    this.currentAddress,
   });
 
   UserHomeState copyWith({
@@ -35,6 +37,7 @@ class UserHomeState {
     Race? currentRace,
     UserStep? step,
     bool? isLoading,
+    String? currentAddress,
   }) {
     return UserHomeState(
       myLocation: myLocation ?? this.myLocation,
@@ -43,6 +46,7 @@ class UserHomeState {
       currentRace: currentRace ?? this.currentRace,
       step: step ?? this.step,
       isLoading: isLoading ?? this.isLoading,
+      currentAddress: currentAddress ?? this.currentAddress,
     );
   }
 }

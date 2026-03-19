@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:latlong2/latlong.dart';
+import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
@@ -183,5 +185,39 @@ class UserNetworkServiceImpl implements UserNetworkService {
   Future<User?> getUserProfile(String token) {
     // TODO: implement getUserProfile
     throw UnimplementedError();
+  }
+
+  Future<String> getAddressFromLatLng(double lat, double lon) async {
+    final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json");
+    final response = await http.get(url, headers: {
+      "User-Agent": "moto_taxi_digital_mobile"
+    });
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data["display_name"] ?? "Adresse inconnue";
+    } else {
+      return "Erreur lors du reverse geocoding";
+    }
+  }
+  Future<SearchResult?> searchAddress(String query) async {
+    final encoded = Uri.encodeQueryComponent(query);
+    final url = Uri.parse("https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1");
+    final response = await http.get(url, headers: {"User-Agent": "moto_taxi_digital_mobile"});
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data != null && data is List && data.isNotEmpty) {
+        final item = data[0];
+        final lat = double.tryParse(item['lat']?.toString() ?? '');
+        final lon = double.tryParse(item['lon']?.toString() ?? '');
+        final displayName = item['display_name'] ?? '';
+        if (lat != null && lon != null) {
+          return SearchResult(location: LatLng(lat, lon), displayName: displayName);
+        }
+      }
+    }
+    return null;
   }
 }

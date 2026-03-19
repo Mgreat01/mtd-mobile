@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/RaceTrackingPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRacePage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRaceState.dart';
+//import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/RaceTurackingPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 class UserHomePage extends ConsumerWidget {
@@ -17,10 +19,8 @@ class UserHomePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (state.currentRace != null) {
-      return const RaceTrackingPage();
-    }
-
+    final MapController mapController = MapController();
+    final TextEditingController searchController = TextEditingController();
     return Scaffold(
       body: Stack(
         children: [
@@ -34,10 +34,10 @@ class UserHomePage extends ConsumerWidget {
           ),
 
           Positioned(
-            bottom: 30,
+            bottom: 120,
             left: 20,
             right: 20,
-            child: _buildBookingCard(theme, state, notifier),
+            child: _buildBookingCard(context, theme, state, notifier),
           ),
 
           if (state.isLoading)
@@ -161,7 +161,11 @@ class UserHomePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildBookingCard(ThemeData theme, UserHomeState state, UserHomeController notifier) {
+  Widget _buildBookingCard(BuildContext context, ThemeData theme, UserHomeState state, UserHomeController notifier) {
+    final String currentPositionString = state.currentAddress ?? "${state.myLocation.latitude},${state.myLocation.longitude}";
+    const String destinationName = "Gombe, Kinshasa";
+    const double prixEstime = 10000.0;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -182,27 +186,28 @@ class UserHomePage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(width: 15),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Départ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text('Ma position actuelle', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    SizedBox(height: 15),
-                    Text('Destination', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text('Gombe, Kinshasa', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                    const Text('Départ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Text('Ma position ($currentPositionString)',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 15),
+                    const Text('Destination', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(destinationName, style: TextStyle(fontSize: 14, color: Colors.black87)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-
-          // Infos sur le biker sélectionné
           if (state.selectedBiker != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 15),
-              child: Text("Motard sélectionné : ${state.selectedBiker!.name}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              child: Text("Motard sélectionné : ${state.selectedBiker!.name}",
+                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
             ),
 
           Row(
@@ -212,7 +217,7 @@ class UserHomePage extends ConsumerWidget {
                 text: TextSpan(
                   style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
                   children: [
-                    const TextSpan(text: '10 000 FC'),
+                    TextSpan(text: '${prixEstime.toInt()} FC'),
                     TextSpan(
                       text: ' . 10 min',
                       style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.normal, fontSize: 14),
@@ -221,18 +226,27 @@ class UserHomePage extends ConsumerWidget {
                 ),
               ),
               ElevatedButton(
-                // Action du bouton
                 onPressed: state.selectedBiker == null
-                    ? null // Désactivé si aucun biker n'est choisi
+                    ? null
                     : () {
-                  notifier.confirmBooking(
-                    destinationName: "Gombe, Kinshasa",
-                    priceListId: 1, // ID à récupérer dynamiquement si besoin
+                  final params = ConfirmRaceState(
+                    destinationName: destinationName,
+                    startAddress: currentPositionString,
+                    amount: prixEstime,
+                    selectedBiker: state.selectedBiker!,
+                    priceListId: 1,
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ConfirmRacePage(params: params),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF008E53),
-                  foregroundColor: Colors.white,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   elevation: 0,

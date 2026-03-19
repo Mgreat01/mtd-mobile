@@ -42,7 +42,7 @@ class ConfirmRacePage extends ConsumerWidget {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.green.withOpacity(0.1),
-                    child: Image.asset('assets/moto.png', width: 40),
+                    child: Image.asset('assets/images/moto.png', width: 40),
                   ),
                   const SizedBox(width: 15),
                   Expanded(

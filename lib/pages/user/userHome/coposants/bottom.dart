@@ -24,7 +24,6 @@ class BottomNavBar extends ConsumerWidget {
     print("le role de l'utilisateur : ${data?.role}");
     print("L'utilisateur connecter ${data?.name} - ${data?.prenom} - ${data?.email} - ${data?.phone} - ${data?.role} - ${data?.photo}");
 
-    // 1. Définition des pages selon le rôle avec les bonnes options
     final List<Widget> pages = _getPagesForRole(userRole);
 
     return Scaffold(
@@ -88,19 +87,18 @@ class BottomNavBar extends ConsumerWidget {
     );
   }
 
-  // Méthode pour obtenir les pages selon le rôle
   List<Widget> _getPagesForRole(String userRole) {
     switch (userRole) {
       case 'passenger':
         return [
-          const PassengerHomePage(),
+          const UserHomePage(),
           const HistoryPage(),
           const WalletPage(),
           const SettingsPage(),
         ];
       case 'biker':
         return [
-          const BikerHomePage(),
+          const BikerPage(),
           const RideRequestsPage(),
           const BikerHistoryPage(),
           const WalletPage(),
@@ -109,13 +107,13 @@ class BottomNavBar extends ConsumerWidget {
         ];
       case 'owner':
         return [
-          const OwnerDashboardPage(),
+          const OwnerHomePage(),
           const OwnerBikesPage(),
           const WalletPage(),
           const SettingsPage(),
         ];
       default:
-        return [const PassengerHomePage()];
+        return [const UserHomePage()];
     }
   }
 
@@ -242,11 +240,11 @@ class BottomNavBar extends ConsumerWidget {
     required Function(int) onTap,
   }) {
     final isSelected = currentIndex == index;
-    
+
     // Couleurs adaptées au mode
     final selectedColor = AppTheme.primaryDarkAccent; // #1E8142 reste la même
     final unselectedColor = isDarkMode ? AppTheme.textDark : Colors.grey[600];
-    final backgroundColor = isSelected 
+    final backgroundColor = isSelected
         ? selectedColor.withOpacity(0.1)
         : Colors.transparent;
 
@@ -284,8 +282,8 @@ class BottomNavBar extends ConsumerWidget {
   }
 
   Widget _buildCircleAction({
-    required IconData icon, 
-    required ThemeData theme, 
+    required IconData icon,
+    required ThemeData theme,
     required bool isDarkMode,
     required VoidCallback onPressed
   }) {
@@ -303,8 +301,8 @@ class BottomNavBar extends ConsumerWidget {
       ),
       child: IconButton(
         icon: Icon(
-          icon, 
-          color: isDarkMode ? AppTheme.textDark : theme.colorScheme.onSurface, 
+          icon,
+          color: isDarkMode ? AppTheme.textDark : theme.colorScheme.onSurface,
           size: 20
         ),
         onPressed: onPressed,
@@ -313,24 +311,6 @@ class BottomNavBar extends ConsumerWidget {
   }
 }
 
-// Pages temporaires avec adaptation au mode sombre
-class PassengerHomePage extends StatelessWidget {
-  const PassengerHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return Center(
-      child: Text(
-        'Page Accueil Passenger avec carte',
-        style: TextStyle(
-          color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
-        ),
-      ),
-    );
-  }
-}
 
 class HistoryPage extends StatelessWidget {
   const HistoryPage({super.key});
@@ -338,7 +318,7 @@ class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Historique courses',
@@ -356,7 +336,7 @@ class WalletPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Wallet',
@@ -374,28 +354,10 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Paramètres',
-        style: TextStyle(
-          color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
-        ),
-      ),
-    );
-  }
-}
-
-class BikerHomePage extends StatelessWidget {
-  const BikerHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return Center(
-      child: Text(
-        'Page Biker - Activation course',
         style: TextStyle(
           color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
         ),
@@ -410,7 +372,7 @@ class RideRequestsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Demandes de courses',
@@ -428,7 +390,7 @@ class BikerHistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Historique Biker',
@@ -446,7 +408,7 @@ class ReportingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Reporting',
@@ -464,7 +426,7 @@ class OwnerDashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Dashboard Owner - Reporting',
@@ -482,7 +444,7 @@ class OwnerBikesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Text(
         'Mes motos',

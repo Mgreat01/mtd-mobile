@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
-import 'package:moto_taxi_digital_mobile/pages/user/profil/profielCtl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/providers/themeProvider.dart';
 

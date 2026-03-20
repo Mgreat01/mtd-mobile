@@ -1,21 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
+import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 import 'package:moto_taxi_digital_mobile/business/services/race/raceService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
+import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:moto_taxi_digital_mobile/framework/race/raceServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/framework/user/biker/bikerServiceImpl.dart';
+import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 import 'dart:async';
 
 class UserHomeController extends StateNotifier<UserHomeState> {
   final RaceService _raceService;
   final BikerService _bikerService;
+  final UserNetworkServiceImpl _userNetworkServiceImpl;
   Timer? _refreshTimer;
 
-  UserHomeController(this._raceService, this._bikerService)
+  UserHomeController(this._raceService, this._bikerService, this._userNetworkServiceImpl)
       : super(UserHomeState(myLocation: LatLng(-4.322447, 15.307045))) {
     refreshBikers();
+    updateCurrentAddress();
     _startTimer();
   }
 
@@ -96,8 +101,34 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       print("Erreur : $e");
     }
   }
+
+  Future<void> updateCurrentAddress() async {
+    final lat = state.myLocation.latitude;
+    final lon = state.myLocation.longitude;
+    final address = await _userNetworkServiceImpl.getAddressFromLatLng(lat, lon);
+
+    state = state.copyWith(currentAddress: address);
+  }
+  Future<SearchResult?> searchAddress(String query) async {
+    if (query.trim().isEmpty) return null;
+    try {
+      final result = await _userNetworkServiceImpl.searchAddress(query);
+      if (result != null) {
+        state = state.copyWith(
+          myLocation: result.location,
+          currentAddress: result.displayName,
+        );
+      }
+      return result;
+    } catch (e) {
+      print("Erreur searchAddress: $e");
+      return null;
+    }
+  }
+
+
 }
 
 final userHomeControllerProvider = StateNotifierProvider<UserHomeController, UserHomeState>((ref) {
-  return UserHomeController(RaceServiceImpl(), BikerServiceImpl());
+  return UserHomeController(RaceServiceImpl(), BikerServiceImpl(), UserNetworkServiceImpl());
 });

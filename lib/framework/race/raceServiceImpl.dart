@@ -37,8 +37,10 @@ class RaceServiceImpl implements RaceService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 201 || response.statusCode == 200) {
+      print("Course créée avec succès : ${data['id']}");
       return Race.fromJson(data);
     } else {
+      print("echec de la course : ${ response.body}");
       throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
     }
   }
@@ -81,4 +83,26 @@ class RaceServiceImpl implements RaceService {
     final List<dynamic> data = jsonDecode(response.body);
     return data.map((json) => Race.fromJson(json)).toList();
   }
+
+  @override
+  Future<Race> updateRaceStatus(int id, Map<String, dynamic> updates) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/races/$id'),
+      headers: _headers(tokens),
+      body: jsonEncode(updates),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      print("Course mise à jour avec succès : ${data['id']}");
+      return Race.fromJson(data);
+    } else {
+      print("Échec de la mise à jour : ${response.body}");
+      throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
+    }
+  }
+
+
+
 }

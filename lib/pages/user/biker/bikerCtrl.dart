@@ -120,7 +120,7 @@ void _stopLocationTracking() {
       double dailyTotal = 0.0;
       for (var race in finishedToday) {
         final priceObj = priceLists.firstWhere(
-              (p) => p['id'].toString() == race.idPriceList.toString(),
+              (p) => p['id'].toString() == race.priceListId.toString(),
           orElse: () => null,
         );
         if (priceObj != null) {

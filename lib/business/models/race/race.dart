@@ -7,7 +7,6 @@ class Race {
   final String status;
   final int bikerId;
   final int clientId;
-  final int? idPriceList;
   final int? priceListId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -22,7 +21,6 @@ class Race {
     required this.status,
     required this.bikerId,
     required this.clientId,
-    this.idPriceList,
     this.priceListId,
     required this.createdAt,
     required this.updatedAt,
@@ -39,7 +37,6 @@ class Race {
       status: json['status'] ?? 'pending',
       bikerId: json['biker_id'] as int,
       clientId: json['client_id'] as int,
-      idPriceList: json['id_Price_list'],
       priceListId: json['price_list_id'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
@@ -59,7 +56,6 @@ class Race {
       'status': status,
       'biker_id': bikerId,
       'client_id': clientId,
-      'id_Price_list': idPriceList,
       'price_list_id': priceListId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),

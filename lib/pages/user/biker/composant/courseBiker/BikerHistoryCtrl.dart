@@ -29,6 +29,7 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
     ).toList();
   }
 
+
   Future<void> fetchRaces() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {

@@ -7,7 +7,7 @@ class ConfirmRaceState {
   final String destinationName;
   final String startAddress;
   final double amount;
-  final BikerMarkerData selectedBiker;
+  final BikerMarkerData? selectedBiker;
   final int priceListId;
 
   ConfirmRaceState({
@@ -16,7 +16,7 @@ class ConfirmRaceState {
     required this.destinationName,
     required this.startAddress,
     required this.amount,
-    required this.selectedBiker,
+    this.selectedBiker,
     required this.priceListId,
   });
 

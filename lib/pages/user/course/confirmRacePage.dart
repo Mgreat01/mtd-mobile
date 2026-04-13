@@ -49,7 +49,7 @@ class ConfirmRacePage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(params.selectedBiker.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(params.selectedBiker!.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                         const Text("Motard sélectionné", style: TextStyle(color: Colors.grey)),
                       ],
                     ),

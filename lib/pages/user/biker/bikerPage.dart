@@ -155,6 +155,27 @@ class _BikerPageState extends ConsumerState<BikerPage> {
   }
 
   Widget _buildServiceButton(BikerState state, BikerController notifier, ColorScheme colorScheme) {
+    // On récupère l'information de course active depuis le notifier
+    final bool isBusy = notifier.isRaceActive;
+
+    // Cas 1 : Le motard est en pleine course (Occupé)
+    if (isBusy) {
+      return ElevatedButton.icon(
+        onPressed: null, // Désactivé : on ne peut pas arrêter le service en course
+        icon: const Icon(Icons.directions_bike, color: Colors.white70),
+        label: const Text(
+          "COURSE EN COURS...",
+          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade800.withOpacity(0.6), // Couleur d'avertissement
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    }
+
+    // Cas 2 : État normal (En ligne ou Hors ligne)
     return ElevatedButton.icon(
       onPressed: () => notifier.toggleService(),
       icon: Icon(
@@ -166,7 +187,6 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold, fontSize: 16),
       ),
       style: ElevatedButton.styleFrom(
-        // Utilisation de errorContainer pour l'arrêt et primary pour le début
         backgroundColor: state.isOnline ? colorScheme.error : colorScheme.primary,
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

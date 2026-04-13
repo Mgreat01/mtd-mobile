@@ -23,7 +23,7 @@ class ConfirmRaceController extends StateNotifier<ConfirmRaceState> {
         startingPoint: state.startAddress,
         destination: state.destinationName,
         status: 'pending',
-        bikerId: state.selectedBiker.id,
+        bikerId: state.selectedBiker!.id,
         clientId: 0,
         priceListId: state.priceListId ?? 1,
         createdAt: DateTime.now(),

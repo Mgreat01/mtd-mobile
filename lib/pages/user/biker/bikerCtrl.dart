@@ -4,7 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
-import 'package:moto_taxi_digital_mobile/main.dart'; // Pour getIt
+import 'package:moto_taxi_digital_mobile/main.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/courseBiker/BikerHistoryCtrl.dart';
 import 'bikerState.dart';
 
 class BikerController extends StateNotifier<BikerState> {
@@ -29,6 +30,11 @@ class BikerController extends StateNotifier<BikerState> {
       _stopLocationTracking();
       state = state.copyWith(isOnline: false);
     }
+  }
+
+  bool get isRaceActive {
+    final historyNotifier = ref.read(BikerHistoryControllerProvider.notifier);
+    return historyNotifier.isRaceActive;
   }
 
   Future<bool> _handleLocationPermission() async {

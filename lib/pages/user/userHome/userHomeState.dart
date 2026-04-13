@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
+import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 
 class BikerMarkerData {
   final int id;
@@ -19,6 +20,8 @@ class UserHomeState {
   final UserStep step;
   final bool isLoading;
   final String? currentAddress;
+  final String? destinationAddress;
+  final List<SearchResult> searchResults;
 
   UserHomeState({
     required this.myLocation,
@@ -28,6 +31,8 @@ class UserHomeState {
     this.step = UserStep.searching,
     this.isLoading = false,
     this.currentAddress,
+    this.destinationAddress,
+    this.searchResults = const [],
   });
 
   UserHomeState copyWith({
@@ -38,6 +43,8 @@ class UserHomeState {
     UserStep? step,
     bool? isLoading,
     String? currentAddress,
+    String? destinationAddress,
+    List<SearchResult>? searchResults,
   }) {
     return UserHomeState(
       myLocation: myLocation ?? this.myLocation,
@@ -46,7 +53,11 @@ class UserHomeState {
       currentRace: currentRace ?? this.currentRace,
       step: step ?? this.step,
       isLoading: isLoading ?? this.isLoading,
+
       currentAddress: currentAddress ?? this.currentAddress,
+      destinationAddress: destinationAddress ?? this.destinationAddress,
+
+      searchResults: searchResults ?? this.searchResults,
     );
   }
 }

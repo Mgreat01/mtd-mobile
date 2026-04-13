@@ -4,7 +4,13 @@ class Race {
   final String date;
   final String startingPoint;
   final String destination;
+  final double? startLat;
+  final double? startLng;
+  final double? endLat;
+  final double? endLng;
+
   final String status;
+  final String? pinCode;
   final int bikerId;
   final int clientId;
   final int? priceListId;
@@ -18,7 +24,12 @@ class Race {
     required this.date,
     required this.startingPoint,
     required this.destination,
+    this.startLat,
+    this.startLng,
+    this.endLat,
+    this.endLng,
     required this.status,
+    this.pinCode,
     required this.bikerId,
     required this.clientId,
     this.priceListId,
@@ -31,18 +42,22 @@ class Race {
     return Race(
       id: json['id'] as int,
       name: json['name'] ?? '',
-      date: json['date']?? '',
+      date: json['date'] ?? '',
       startingPoint: json['starting_point'] ?? '',
       destination: json['destination'] ?? '',
+      startLat: json['start_lat'] != null ? double.parse(json['start_lat'].toString()) : null,
+      startLng: json['start_lng'] != null ? double.parse(json['start_lng'].toString()) : null,
+      endLat: json['end_lat'] != null ? double.parse(json['end_lat'].toString()) : null,
+      endLng: json['end_lng'] != null ? double.parse(json['end_lng'].toString()) : null,
+
       status: json['status'] ?? 'pending',
+      pinCode: json['pin_code']?.toString(),
       bikerId: json['biker_id'] as int,
       clientId: json['client_id'] as int,
       priceListId: json['price_list_id'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
-      deletedAt: json['deleted_at'] != null
-          ? DateTime.parse(json['deleted_at'])
-          : null,
+      deletedAt: json['deleted_at'] != null ? DateTime.parse(json['deleted_at']) : null,
     );
   }
 
@@ -53,13 +68,15 @@ class Race {
       'date': date,
       'starting_point': startingPoint,
       'destination': destination,
+      'start_lat': startLat,
+      'start_lng': startLng,
+      'end_lat': endLat,
+      'end_lng': endLng,
       'status': status,
+      'pin_code': pinCode,
       'biker_id': bikerId,
       'client_id': clientId,
       'price_list_id': priceListId,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'deleted_at': deletedAt?.toIso8601String(),
     };
   }
 }

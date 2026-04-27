@@ -9,6 +9,10 @@ class ConfirmRaceState {
   final double amount;
   final BikerMarkerData? selectedBiker;
   final int priceListId;
+  final double startLat;
+  final double startLng;
+  final double endLat;
+  final double endLng;
 
   ConfirmRaceState({
     this.isLoading = false,
@@ -18,6 +22,10 @@ class ConfirmRaceState {
     required this.amount,
     this.selectedBiker,
     required this.priceListId,
+    required this.startLat,
+    required this.startLng,
+    required this.endLat,
+    required this.endLng,
   });
 
   ConfirmRaceState copyWith({
@@ -32,6 +40,10 @@ class ConfirmRaceState {
       amount: amount,
       selectedBiker: selectedBiker,
       priceListId: priceListId,
+      startLat: startLat,
+      startLng: startLng,
+      endLat: endLat,
+      endLng: endLng,
     );
   }
 }

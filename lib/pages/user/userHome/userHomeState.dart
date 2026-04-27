@@ -7,57 +7,111 @@ class BikerMarkerData {
   final LatLng position;
   final String name;
 
-  BikerMarkerData({required this.id, required this.position, required this.name});
+  const BikerMarkerData({
+    required this.id,
+    required this.position,
+    required this.name,
+  });
 }
 
-enum UserStep { searching, confirming, waitingForBiker, inRace }
+enum UserStep {
+  searching,
+  confirming,
+  waitingForBiker,
+  inRace,
+}
 
 class UserHomeState {
-  final LatLng myLocation;
-  final List<BikerMarkerData> nearbyBikers;
-  final BikerMarkerData? selectedBiker;
-  final Race? currentRace;
-  final UserStep step;
-  final bool isLoading;
+  final LatLng pickupLocation;
+  final LatLng mapCenter;
+
+  final LatLng? destinationLocation;
+
   final String? currentAddress;
+
   final String? destinationAddress;
+
+  final bool isLoading;
+
   final List<SearchResult> searchResults;
 
-  UserHomeState({
-    required this.myLocation,
-    this.nearbyBikers = const [],
-    this.selectedBiker,
-    this.currentRace,
-    this.step = UserStep.searching,
-    this.isLoading = false,
+  final List<BikerMarkerData> nearbyBikers;
+
+  final BikerMarkerData? selectedBiker;
+
+  final Race? currentRace;
+
+  final UserStep step;
+
+  const UserHomeState({
+    required this.pickupLocation,
+    required this.mapCenter,
+
+    this.destinationLocation,
+
     this.currentAddress,
     this.destinationAddress,
+
+    this.isLoading = false,
     this.searchResults = const [],
+
+    this.nearbyBikers = const [],
+    this.selectedBiker,
+
+    this.currentRace,
+    this.step = UserStep.searching,
   });
 
   UserHomeState copyWith({
-    LatLng? myLocation,
-    List<BikerMarkerData>? nearbyBikers,
-    BikerMarkerData? selectedBiker,
-    Race? currentRace,
-    UserStep? step,
-    bool? isLoading,
+    LatLng? pickupLocation,
+    LatLng? mapCenter,
+    LatLng? destinationLocation,
+
     String? currentAddress,
     String? destinationAddress,
+
+    bool? isLoading,
     List<SearchResult>? searchResults,
+
+    List<BikerMarkerData>? nearbyBikers,
+    BikerMarkerData? selectedBiker,
+
+    Race? currentRace,
+    UserStep? step,
   }) {
     return UserHomeState(
-      myLocation: myLocation ?? this.myLocation,
-      nearbyBikers: nearbyBikers ?? this.nearbyBikers,
-      selectedBiker: selectedBiker ?? this.selectedBiker,
-      currentRace: currentRace ?? this.currentRace,
-      step: step ?? this.step,
-      isLoading: isLoading ?? this.isLoading,
+      pickupLocation: pickupLocation ?? this.pickupLocation,
+      mapCenter: mapCenter ?? this.mapCenter,
+      destinationLocation: destinationLocation ?? this.destinationLocation,
 
       currentAddress: currentAddress ?? this.currentAddress,
       destinationAddress: destinationAddress ?? this.destinationAddress,
 
+      isLoading: isLoading ?? this.isLoading,
       searchResults: searchResults ?? this.searchResults,
+
+      nearbyBikers: nearbyBikers ?? this.nearbyBikers,
+      selectedBiker: selectedBiker ?? this.selectedBiker,
+
+      currentRace: currentRace ?? this.currentRace,
+      step: step ?? this.step,
     );
   }
+
+  // UserHomeState clearDestination() {
+  //   return copyWith(
+  //     destinationLocation: null,
+  //     destinationAddress: null,
+  //     searchResults: [],
+  //   );
+  // }
+  //
+  //
+  // UserHomeState clearRace() {
+  //   return copyWith(
+  //     currentRace: null,
+  //     selectedBiker: null,
+  //     step: UserStep.searching,
+  //   );
+  // }
 }

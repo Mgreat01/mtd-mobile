@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
@@ -12,9 +13,12 @@ class BikerController extends StateNotifier<BikerState> {
   final BikerService _bikerService = getIt.get<BikerService>();
   final Ref ref;
   StreamSubscription<Position>? _positionSubscription;
+  Timer? _notifTimer;
+  List<AppNotification> _oldNotifications = [];
 
   BikerController(this.ref) : super(BikerState()) {
     refreshData();
+    _startNotificationPolling();
   }
 
   // --- LOGIQUE DE SERVICE & GPS ---
@@ -144,6 +148,37 @@ void _stopLocationTracking() {
     } catch (e) {
       state = state.copyWith(isLoading: false);
       print("Erreur BikerController: $e");
+    }
+  }
+
+  void _startNotificationPolling() {
+    _notifTimer?.cancel();
+
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 10),
+          (_) => fetchNotifications(),
+    );
+  }
+
+  Future<void> fetchNotifications() async {
+    try {
+      final data = await _bikerService.getNotifications();
+
+      final newNotifications = data.where((n) {
+        return !_oldNotifications.any((o) => o.id.toString() == n.id.toString());
+      }).toList();
+
+      // update state
+      state = state.copyWith(
+        notifications: data,
+        unreadCount: data.where((n) => !n.isRead).length,
+      );
+
+
+
+      _oldNotifications = data;
+    } catch (e) {
+      print("notif error: $e");
     }
   }
 

@@ -12,8 +12,32 @@ class BikerPage extends ConsumerStatefulWidget {
   ConsumerState<BikerPage> createState() => _BikerPageState();
 }
 
+
+
 class _BikerPageState extends ConsumerState<BikerPage> {
   final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    ref.listenManual(bikerControllerProvider, (prev, next) {
+      final prevCount = prev?.notifications.length ?? 0;
+      final nextCount = next.notifications.length;
+
+      if (nextCount > prevCount) {
+        final newNotif = next.notifications.first;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${newNotif.title}"),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +83,35 @@ class _BikerPageState extends ConsumerState<BikerPage> {
                 ],
               ),
             ],
+          ),
+          Positioned(
+            top: 60,
+            right: 20,
+            child: GestureDetector(
+              onTap: () {
+                _showNotifications(context, state);
+              },
+              child: Stack(
+                children: [
+                  const Icon(Icons.notifications, size: 30),
+                  if (state.unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          state.unreadCount.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                    )
+                ],
+              ),
+            ),
           ),
 
           // 2. OVERLAY : CARTE DE REVENUS
@@ -252,6 +305,25 @@ class _BikerPageState extends ConsumerState<BikerPage> {
           ),
         ],
       ),
+    );
+  }
+  void _showNotifications(BuildContext context, BikerState state) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return ListView.builder(
+          itemCount: state.notifications.length,
+          itemBuilder: (_, i) {
+            final n = state.notifications[i];
+
+            return ListTile(
+              leading: const Icon(Icons.notifications),
+              title: Text(n.title),
+              subtitle: Text(n.message),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/biker/biker.dart';
 import 'package:moto_taxi_digital_mobile/business/models/wallet/wallet.dart';
@@ -157,6 +158,31 @@ class BikerServiceImpl implements BikerService {
       }).toList();
     } else {
       throw Exception('Failed to load bikers');
+    }
+  }
+
+  Future<List<AppNotification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/bikers/notifications'),
+      headers: _headers(tokens),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print(response.statusCode);
+      print(response.body);
+      final list = data['notifications'];
+
+      print("RAW LIST: $list");
+      print("LENGTH: ${list.length}");
+
+      return (data['notifications'] as List)
+          .map((e) => AppNotification.fromJson(e))
+          .toList();
+    } else {
+      debugPrint("Erreur notifications: ${response.body}");
+      debugPrint("Status code: ${response.statusCode}");
+      throw Exception("Erreur notifications");
     }
   }
 }

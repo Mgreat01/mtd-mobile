@@ -89,7 +89,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Race>> getCourses() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/races'),
+      Uri.parse('$baseUrl/api/bikers/new-races'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);

@@ -11,7 +11,7 @@ class Race {
 
   final String status;
   final String? pinCode;
-  final int bikerId;
+  final int? bikerId;
   final int clientId;
   final int? priceListId;
   final DateTime createdAt;
@@ -30,7 +30,7 @@ class Race {
     this.endLng,
     required this.status,
     this.pinCode,
-    required this.bikerId,
+    this.bikerId,
     required this.clientId,
     this.priceListId,
     required this.createdAt,
@@ -52,7 +52,7 @@ class Race {
 
       status: json['status'] ?? 'pending',
       pinCode: json['pin_code']?.toString(),
-      bikerId: json['biker_id'] as int,
+      bikerId: json['biker_id'] != null ? json['biker_id'] as int : null,
       clientId: json['client_id'] as int,
       priceListId: json['price_list_id'],
       createdAt: DateTime.parse(json['created_at']),
@@ -68,8 +68,8 @@ class Race {
       'date': date,
       'starting_point': startingPoint,
       'destination': destination,
-      'start_lat': startLat,
-      'start_lng': startLng,
+      'lat_start': startLat,
+      'lng_start': startLng,
       'end_lat': endLat,
       'end_lng': endLng,
       'status': status,

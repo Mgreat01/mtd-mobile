@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/biker/biker.dart';
 import 'package:moto_taxi_digital_mobile/business/models/wallet/wallet.dart';
@@ -24,7 +25,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Biker>> getAllBikers() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/bikers'),
+      Uri.parse('$baseUrl/api/bikers'),
     );
 
     final data = jsonDecode(response.body);
@@ -36,7 +37,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<Biker> getBikerById(int id) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/bikers/$id'),
+      Uri.parse('$baseUrl/api/bikers/$id'),
     );
 
     return Biker.fromJson(jsonDecode(response.body));
@@ -45,7 +46,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<void> deleteBiker(int id) async {
     await http.delete(
-      Uri.parse('$baseUrl/bikers/$id'),
+      Uri.parse('$baseUrl/api/bikers/$id'),
       headers:  _headers(tokens),
     );
   }
@@ -53,7 +54,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<dynamic>> getBikerRaces(int bikerId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/bikers/$bikerId/races'),
+      Uri.parse('$baseUrl/api/bikers/races'),
       headers:  _headers(tokens),
     );
 
@@ -65,7 +66,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Biker>> getAvailableBikers() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/bikers/available'),
+      Uri.parse('$baseUrl/api/bikers/available'),
       headers:  _headers(tokens),
     );
 
@@ -78,7 +79,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<dynamic> getBalance() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/wallets/balance'),
+      Uri.parse('$baseUrl/api/wallets/balance'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);
@@ -88,7 +89,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future<List<Race>> getCourses() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/bikers/races'),
+      Uri.parse('$baseUrl/api/bikers/new-races'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);
@@ -102,7 +103,7 @@ class BikerServiceImpl implements BikerService {
   @override
   Future getPrices() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/price-lists'),
+      Uri.parse('$baseUrl/api/price-lists'),
       headers: _headers(tokens),
     );
     final data = jsonDecode(response.body);
@@ -157,6 +158,31 @@ class BikerServiceImpl implements BikerService {
       }).toList();
     } else {
       throw Exception('Failed to load bikers');
+    }
+  }
+
+  Future<List<AppNotification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/bikers/notifications'),
+      headers: _headers(tokens),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print(response.statusCode);
+      print(response.body);
+      final list = data['notifications'];
+
+      print("RAW LIST: $list");
+      print("LENGTH: ${list.length}");
+
+      return (data['notifications'] as List)
+          .map((e) => AppNotification.fromJson(e))
+          .toList();
+    } else {
+      debugPrint("Erreur notifications: ${response.body}");
+      debugPrint("Status code: ${response.statusCode}");
+      throw Exception("Erreur notifications");
     }
   }
 }

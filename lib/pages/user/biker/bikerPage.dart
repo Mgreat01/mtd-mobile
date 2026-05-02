@@ -12,8 +12,32 @@ class BikerPage extends ConsumerStatefulWidget {
   ConsumerState<BikerPage> createState() => _BikerPageState();
 }
 
+
+
 class _BikerPageState extends ConsumerState<BikerPage> {
   final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    ref.listenManual(bikerControllerProvider, (prev, next) {
+      final prevCount = prev?.notifications.length ?? 0;
+      final nextCount = next.notifications.length;
+
+      if (nextCount > prevCount) {
+        final newNotif = next.notifications.first;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${newNotif.title}"),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +83,35 @@ class _BikerPageState extends ConsumerState<BikerPage> {
                 ],
               ),
             ],
+          ),
+          Positioned(
+            top: 60,
+            right: 20,
+            child: GestureDetector(
+              onTap: () {
+                _showNotifications(context, state);
+              },
+              child: Stack(
+                children: [
+                  const Icon(Icons.notifications, size: 30),
+                  if (state.unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          state.unreadCount.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                    )
+                ],
+              ),
+            ),
           ),
 
           // 2. OVERLAY : CARTE DE REVENUS
@@ -155,6 +208,27 @@ class _BikerPageState extends ConsumerState<BikerPage> {
   }
 
   Widget _buildServiceButton(BikerState state, BikerController notifier, ColorScheme colorScheme) {
+    // On récupère l'information de course active depuis le notifier
+    final bool isBusy = notifier.isRaceActive;
+
+    // Cas 1 : Le motard est en pleine course (Occupé)
+    if (isBusy) {
+      return ElevatedButton.icon(
+        onPressed: null, // Désactivé : on ne peut pas arrêter le service en course
+        icon: const Icon(Icons.directions_bike, color: Colors.white70),
+        label: const Text(
+          "COURSE EN COURS...",
+          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade800.withOpacity(0.6), // Couleur d'avertissement
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    }
+
+    // Cas 2 : État normal (En ligne ou Hors ligne)
     return ElevatedButton.icon(
       onPressed: () => notifier.toggleService(),
       icon: Icon(
@@ -166,7 +240,6 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold, fontSize: 16),
       ),
       style: ElevatedButton.styleFrom(
-        // Utilisation de errorContainer pour l'arrêt et primary pour le début
         backgroundColor: state.isOnline ? colorScheme.error : colorScheme.primary,
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -232,6 +305,25 @@ class _BikerPageState extends ConsumerState<BikerPage> {
           ),
         ],
       ),
+    );
+  }
+  void _showNotifications(BuildContext context, BikerState state) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return ListView.builder(
+          itemCount: state.notifications.length,
+          itemBuilder: (_, i) {
+            final n = state.notifications[i];
+
+            return ListTile(
+              leading: const Icon(Icons.notifications),
+              title: Text(n.title),
+              subtitle: Text(n.message),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 
 class BikerState {
@@ -9,6 +10,8 @@ class BikerState {
   final String walletBalance;
   final List<Race> races;
   final bool isLoading;
+  final List<AppNotification> notifications;
+  final int unreadCount;
 
   BikerState({
     this.isOnline = false,
@@ -18,6 +21,8 @@ class BikerState {
     this.walletBalance = "0 CDF",
     this.races = const [],
     this.isLoading = false,
+    this.notifications = const [],
+    this.unreadCount = 0,
   });
 
   BikerState copyWith({
@@ -28,6 +33,8 @@ class BikerState {
     String? walletBalance,
     List<Race>? races,
     bool? isLoading,
+    List<AppNotification>? notifications,
+    int? unreadCount,
   }) {
     return BikerState(
       isOnline: isOnline ?? this.isOnline,
@@ -37,6 +44,8 @@ class BikerState {
       walletBalance: walletBalance ?? this.walletBalance,
       races: races ?? this.races,
       isLoading: isLoading ?? this.isLoading,
+      notifications: notifications ?? this.notifications,
+      unreadCount: unreadCount ?? this.unreadCount,
     );
   }
 }

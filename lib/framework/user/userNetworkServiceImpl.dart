@@ -201,23 +201,45 @@ class UserNetworkServiceImpl implements UserNetworkService {
       return "Erreur lors du reverse geocoding";
     }
   }
-  Future<SearchResult?> searchAddress(String query) async {
-    final encoded = Uri.encodeQueryComponent(query);
-    final url = Uri.parse("https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1");
-    final response = await http.get(url, headers: {"User-Agent": "moto_taxi_digital_mobile"});
+  @override
+  Future<List<SearchResult>> searchAddresses(String query) async {
+    if (query.trim().length < 3) return [];
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data != null && data is List && data.isNotEmpty) {
-        final item = data[0];
-        final lat = double.tryParse(item['lat']?.toString() ?? '');
-        final lon = double.tryParse(item['lon']?.toString() ?? '');
-        final displayName = item['display_name'] ?? '';
-        if (lat != null && lon != null) {
-          return SearchResult(location: LatLng(lat, lon), displayName: displayName);
-        }
+    final encoded = Uri.encodeQueryComponent(query);
+    final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=5&addressdetails=1");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "User-Agent": "moto_taxi_app (ephraimmonga5@gmail.com)" // 🔥 IMPORTANT
+        },
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+
+        if (data.isEmpty) return [];
+
+        return data.map((item) {
+          final lat = double.tryParse(item['lat'].toString());
+          final lon = double.tryParse(item['lon'].toString());
+
+          if (lat == null || lon == null) return null;
+
+          return SearchResult(
+            location: LatLng(lat, lon),
+            displayName: item['display_name'] ?? "Lieu inconnu",
+          );
+        }).whereType<SearchResult>().toList();
+      } else {
+        print("Erreur Nominatim: ${response.statusCode}");
       }
+    } catch (e) {
+      print("Erreur réseau search: $e");
     }
-    return null;
+
+    return [];
   }
 }

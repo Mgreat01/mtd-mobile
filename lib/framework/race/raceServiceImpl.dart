@@ -87,7 +87,7 @@ class RaceServiceImpl implements RaceService {
   @override
   Future<Race> updateRaceStatus(int id, Map<String, dynamic> updates) async {
     final response = await http.put(
-      Uri.parse('$baseUrl/api/races/updateStatus/$id'),
+      Uri.parse('$baseUrl/api/races/$id'),
       headers: _headers(tokens),
       body: jsonEncode(updates),
     );
@@ -95,13 +95,14 @@ class RaceServiceImpl implements RaceService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      print("Course mise à jour avec succès : ${data['id']}");
-      return Race.fromJson(data);
+      print("Course mise à jour avec succès : ${data['race']['id']} avec biker_id ${data['biker_id']}");
+      return Race.fromJson(data['race']); // on parse uniquement l'objet race
     } else {
       print("Échec de la mise à jour : ${response.body}");
       throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
     }
   }
+
 
 
 

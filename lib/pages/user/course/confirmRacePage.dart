@@ -10,9 +10,27 @@ class ConfirmRacePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+
+    ref.listen<ConfirmRaceState>(
+      confirmRaceControllerProvider(params),
+          (previous, next) {
+        if (!next.isLoading && next.errorMessage == null) {
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
+        }
+        if (next.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(next.errorMessage!)),
+          );
+        }
+      },
+    );
     final state = ref.watch(confirmRaceControllerProvider(params));
     final notifier = ref.read(confirmRaceControllerProvider(params).notifier);
     final theme = Theme.of(context);
+
+
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -101,7 +119,7 @@ class ConfirmRacePage extends ConsumerWidget {
             if (state.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 20),
-                child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
+               // child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
               ),
           ],
         ),

@@ -40,7 +40,7 @@ class RaceServiceImpl implements RaceService {
       print("Course créée avec succès : ${data['id']}");
       return Race.fromJson(data);
     } else {
-      print("echec de la course : ${ response.body}");
+      print("echec de la course : ${ response.body} et la status ${response.statusCode}");
       throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
     }
   }

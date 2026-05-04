@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
@@ -102,7 +103,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
         File? businessLicense,
       }) async {
     try {
-      final url = Uri.parse('$baseUrl/register');
+      final url = Uri.parse('$baseUrl/api/register');
       print(" Tentative d'envoi à : $url");
 
       var request = http.MultipartRequest('POST', url);

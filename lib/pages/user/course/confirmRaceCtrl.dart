@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/framework/race/raceServiceImpl.dart';
@@ -37,6 +38,11 @@ class ConfirmRaceController extends StateNotifier<ConfirmRaceState> {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
+
+      print(" longitude ${state.endLng}");
+      debugPrint(" longitude ${state.endLng}");
+      print(" longitude ${state.errorMessage}");
+      debugPrint(" longitude ${state.errorMessage}");
 
       final createdRace = await _raceService.createRace(newRace);
 

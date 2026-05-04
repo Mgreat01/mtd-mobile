@@ -163,7 +163,7 @@ class BikerServiceImpl implements BikerService {
 
   Future<List<AppNotification>> getNotifications() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/notifications'),
+      Uri.parse('$baseUrl/api/biker/notifications'),
       headers: _headers(tokens),
     );
 
@@ -175,12 +175,14 @@ class BikerServiceImpl implements BikerService {
 
       print("RAW LIST: $list");
       print("LENGTH: ${list.length}");
+      print("status code pour notification ${response.statusCode}");
 
       return (data['notifications'] as List)
           .map((e) => AppNotification.fromJson(e))
           .toList();
     } else {
       debugPrint("Erreur notifications: ${response.body}");
+      print("TOKEN: $tokens");
       debugPrint("Status code: ${response.statusCode}");
       throw Exception("Erreur notifications");
     }

@@ -7,5 +7,5 @@ Future <Race> createRace(Race race);
 Future <Race> getRaceById(int id);
 Future <int> deletedRace(int id);
 Future <Race> completedRace( dynamic race);
-Future <Race> updateRaceStatus(int id, Map<String, dynamic> object);
+Future <Race> updateRaceBiker(int id);
 }

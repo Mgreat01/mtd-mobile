@@ -40,15 +40,22 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
     }
   }
 
-  Future<void> changeStatus(int raceId, String newStatus) async {
+  Future<void> changeStatus(int raceId) async {
     state = state.copyWith(isLoading: true);
     try {
-      await _raceService.updateRaceStatus(raceId, {'status': newStatus});
-      await fetchRaces();
+      final updatedRace = await _raceService.updateRaceBiker(raceId);
+
+      final updatedRaces = state.allRaces.map((r) {
+        return r.id == updatedRace.id ? updatedRace : r;
+      }).toList();
+
+      state = state.copyWith(allRaces: updatedRaces, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: "Échec : $e");
     }
   }
+
+
 
   bool get isRaceActive {
     return state.allRaces.any((race) => race.status == 'ongoing');

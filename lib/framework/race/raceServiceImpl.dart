@@ -85,11 +85,11 @@ class RaceServiceImpl implements RaceService {
   }
 
   @override
-  Future<Race> updateRaceStatus(int id, Map<String, dynamic> updates) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/races/$id'),
+  Future<Race> updateRaceBiker(int id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/bikers/validations/${id}'),
       headers: _headers(tokens),
-      body: jsonEncode(updates),
+      //body: jsonEncode(id),
     );
 
     final data = jsonDecode(response.body);

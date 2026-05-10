@@ -76,7 +76,6 @@ class BikerHistoryPage extends ConsumerWidget {
 
   Widget _buildActionButtons(Race race, BikerHistoryController notifier, bool isLoading) {
     String label = "";
-    String nextStatus = "";
     Color color = Colors.green;
 
     final bool hasActiveRace = notifier.isRaceActive;
@@ -95,30 +94,31 @@ class BikerHistoryPage extends ConsumerWidget {
         );
       }
       label = "ACCEPTER LA COURSE";
-      nextStatus = "ongoing";
       color = Colors.green;
-    }
-    else if (race.status == 'ongoing') {
+    } else if (race.status == 'ongoing') {
       label = "TERMINER LA COURSE";
-      nextStatus = "completed";
       color = Colors.orange;
-    }
-    else {
+    } else {
       return const SizedBox.shrink();
     }
 
     return ElevatedButton(
-      onPressed: isLoading ? null : () => notifier.changeStatus(race.id, nextStatus),
+      onPressed: isLoading ? null : () => notifier.changeStatus(race.id),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         minimumSize: const Size(double.infinity, 50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: isLoading
-          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          ? const SizedBox(
+        height: 20,
+        width: 20,
+        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+      )
           : Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
+
   Widget _locationInfo(IconData icon, Color color, String value) {
     return Row(
       children: [

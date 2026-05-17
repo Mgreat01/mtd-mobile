@@ -6,6 +6,7 @@ import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResu
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
+import 'package:moto_taxi_digital_mobile/business/models/wallet/wallet.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:http/http.dart' as http;
 import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
@@ -242,5 +243,25 @@ class UserNetworkServiceImpl implements UserNetworkService {
     }
 
     return [];
+  }
+
+  @override
+  Future<Wallet> getWallet() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/wallets/balance'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("Réponse Wallet : $data");
+        return Wallet.fromJson(data);
+      } else {
+        throw Exception("Impossible de récupérer le solde (${response.statusCode})");
+      }
+    } catch (e) {
+      throw Exception("Erreur Wallet: $e");
+    }
   }
 }

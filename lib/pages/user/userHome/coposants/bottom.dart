@@ -4,6 +4,7 @@ import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/courseBiker/BikerHistory.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/wallet/walletPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
@@ -331,23 +332,6 @@ class HistoryPage extends StatelessWidget {
   }
 }
 
-class WalletPage extends StatelessWidget {
-  const WalletPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: Text(
-        'Wallet',
-        style: TextStyle(
-          color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
-        ),
-      ),
-    );
-  }
-}
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

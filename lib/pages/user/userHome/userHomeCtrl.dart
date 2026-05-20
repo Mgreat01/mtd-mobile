@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart'; // Ajouté pour le GPS
 import 'package:latlong2/latlong.dart';
 
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
@@ -37,9 +38,48 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   }
 
   Future<void> _init() async {
+    await _getUserCurrentLocation();
     await refreshBikers();
     await updateCurrentAddress();
     _startRefreshTimer();
+  }
+
+
+  Future<void> _getUserCurrentLocation() async {
+    bool hasPermission = await _handleLocationPermission();
+    if (!hasPermission) return;
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final currentLatLng = LatLng(position.latitude, position.longitude);
+
+      state = state.copyWith(
+        pickupLocation: currentLatLng,
+        mapCenter: currentLatLng,
+      );
+    } catch (e) {
+      print("Erreur lors de la récupération de la position utilisateur: $e");
+    }
+  }
+
+
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return false;
+    }
+    return true;
   }
 
   void _startRefreshTimer() {
@@ -229,7 +269,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 }
 
 final userHomeControllerProvider =
-StateNotifierProvider<UserHomeController, UserHomeState>(
+StateNotifierProvider.autoDispose<UserHomeController, UserHomeState>(
       (ref) => UserHomeController(
     RaceServiceImpl(),
     BikerServiceImpl(),

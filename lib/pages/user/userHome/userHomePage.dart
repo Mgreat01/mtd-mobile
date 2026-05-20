@@ -31,6 +31,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -38,6 +39,12 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   Widget build(BuildContext context) {
     final state = ref.watch(userHomeControllerProvider);
     final notifier = ref.read(userHomeControllerProvider.notifier);
+
+    ref.listen<UserHomeState>(userHomeControllerProvider, (previous, next) {
+      if (previous?.pickupLocation != next.pickupLocation) {
+        _mapController.move(next.pickupLocation, 15);
+      }
+    });
 
     return Scaffold(
       body: Stack(
@@ -49,6 +56,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               initialCenter: state.mapCenter,
               initialZoom: 15,
               onPositionChanged: (position, hasGesture) {
+                // Le curseur rouge au centre représentera la zone ciblée par le geste
                 if (hasGesture && position.center != null) {
                   notifier.updateLocationFromMap(position.center!);
                 }
@@ -58,6 +66,25 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.moto_taxi.app',
+              ),
+
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: state.pickupLocation,
+                    width: 20,
+                    height: 20,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black26, blurRadius: 4)
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -131,12 +158,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         decoration: InputDecoration(
           hintText: 'Où allez-vous ?',
           border: InputBorder.none,
-
           prefixIcon: const Icon(
             Icons.search,
             color: Colors.green,
           ),
-
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
             icon: const Icon(Icons.clear),
@@ -196,8 +221,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       UserHomeController notifier,
       ) {
     final current = state.currentAddress ?? "Localisation...";
-    final destination =
-        state.destinationAddress ?? "Choisir destination";
+    final destination = state.destinationAddress ?? "Choisir destination";
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -236,13 +260,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   ),
                 ],
               ),
-
               const SizedBox(width: 15),
-
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       current,
@@ -253,9 +274,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                         fontSize: 13,
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
                     Text(
                       destination,
                       maxLines: 1,
@@ -269,7 +288,6 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
 
           /// BUTTON
@@ -295,23 +313,18 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   MaterialPageRoute(
                     builder: (_) => ConfirmRacePage(
                       params: ConfirmRaceState(
-                        destinationName:
-                        state.destinationAddress!,
+                        destinationName: state.destinationAddress!,
                         startAddress: current,
                         amount: 10000,
                         priceListId: 1,
 
                         /// DEPART = vraie position client
-                        startLat:
-                        state.pickupLocation.latitude,
-                        startLng:
-                        state.pickupLocation.longitude,
+                        startLat: state.pickupLocation.latitude,
+                        startLng: state.pickupLocation.longitude,
 
                         /// DESTINATION
-                        endLat: state
-                            .destinationLocation!.latitude,
-                        endLng: state
-                            .destinationLocation!.longitude,
+                        endLat: state.destinationLocation!.latitude,
+                        endLng: state.destinationLocation!.longitude,
                       ),
                     ),
                   ),
@@ -320,8 +333,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                  BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(

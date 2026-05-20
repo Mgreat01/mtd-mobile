@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
@@ -15,10 +16,12 @@ import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 class UserNetworkServiceImpl implements UserNetworkService {
 
   String get baseUrl => AppConfig.apiUrl;
+  String tokens = GetStorage().read('token');
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'Authorization': 'Bearer $tokens',
   };
 
 

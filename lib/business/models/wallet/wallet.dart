@@ -1,7 +1,7 @@
 class Wallet {
  final int? id;
  final double balance;
- final int userId;
+ final int? userId;
  final String? pin;
  final DateTime? createdAt;
  final DateTime? updatedAt;
@@ -9,7 +9,7 @@ class Wallet {
  Wallet({
   this.id,
   required this.balance,
-  required this.userId,
+  this.userId,
   this.pin,
   this.createdAt,
   this.updatedAt,

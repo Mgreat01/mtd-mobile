@@ -7,6 +7,7 @@ import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRaceState.dart
 
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
+import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
 
 class UserHomePage extends ConsumerStatefulWidget {
   const UserHomePage({super.key});
@@ -26,6 +27,25 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     _searchController.addListener(() {
       setState(() {});
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+      ref.listenManual<UserHomeState>(
+        userHomeControllerProvider,
+            (previous, next) {
+          if (previous?.pickupLocation != next.pickupLocation) {
+
+            print("Nouvelle position reçue : "
+                "${next.pickupLocation.latitude}");
+
+            _mapController.move(
+              next.pickupLocation,
+              15,
+            );
+          }
+        },
+      );
+    });
   }
 
   @override
@@ -40,11 +60,6 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     final state = ref.watch(userHomeControllerProvider);
     final notifier = ref.read(userHomeControllerProvider.notifier);
 
-    ref.listen<UserHomeState>(userHomeControllerProvider, (previous, next) {
-      if (previous?.pickupLocation != next.pickupLocation) {
-        _mapController.move(next.pickupLocation, 15);
-      }
-    });
 
     return Scaffold(
       body: Stack(
@@ -64,24 +79,41 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                'https://api.mapbox.com/styles/v1/'
+                    '${MapboxConfig.navigationStyle}'
+                    '/tiles/256/{z}/{x}/{y}@2x'
+                    '?access_token={accessToken}',
+
+                additionalOptions: {
+                  'accessToken': MapboxConfig.accessToken,
+                },
+
                 userAgentPackageName: 'com.moto_taxi.app',
+
+                maxZoom: 20,
               ),
 
               MarkerLayer(
                 markers: [
                   Marker(
+
                     point: state.pickupLocation,
                     width: 20,
                     height: 20,
                     child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 4)
-                        ],
+                      child: Icon(
+                          Icons.location_on,
+                          color: Colors.blue,
+                        size: 40,
                       ),
+                      // decoration: const BoxDecoration(
+                      //   color: Colors.blue,
+                      //   shape: BoxShape.circle,
+                      //   boxShadow: [
+                      //     BoxShadow(color: Colors.black26, blurRadius: 4)
+                      //   ],
+                      // ),
                     ),
                   ),
                 ],
@@ -89,17 +121,6 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             ],
           ),
 
-          /// CURSEUR FIXE
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 40),
-              child: Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 45,
-              ),
-            ),
-          ),
 
           /// SEARCH BAR + RESULTS
           Positioned(

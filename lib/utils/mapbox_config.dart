@@ -5,4 +5,7 @@ class MapboxConfig {
   static String get accessToken =>
       dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '';
 
+  static const String navigationStyle =
+      'mapbox/navigation-day-v1';
+
 }

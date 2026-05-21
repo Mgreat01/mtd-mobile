@@ -40,45 +40,75 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   Future<void> _init() async {
     await _getUserCurrentLocation();
     await refreshBikers();
-    await updateCurrentAddress();
     _startRefreshTimer();
   }
 
 
   Future<void> _getUserCurrentLocation() async {
+
     bool hasPermission = await _handleLocationPermission();
+
     if (!hasPermission) return;
 
     try {
+
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.best,
       );
 
-      final currentLatLng = LatLng(position.latitude, position.longitude);
+      final currentLatLng = LatLng(
+        position.latitude,
+        position.longitude,
+      );
+
+      print("GPS POSITION : "
+          "${position.latitude}, ${position.longitude}");
 
       state = state.copyWith(
         pickupLocation: currentLatLng,
         mapCenter: currentLatLng,
       );
+      await updateCurrentAddress();
+
     } catch (e) {
-      print("Erreur lors de la récupération de la position utilisateur: $e");
+
+      print("Erreur GPS : $e");
     }
   }
 
 
   Future<bool> _handleLocationPermission() async {
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return false;
+
+    if (!serviceEnabled) {
+
+      print("Le service de localisation est désactivé");
+
+      await Geolocator.openLocationSettings();
+
+      return false;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return false;
-    }
 
+      permission = await Geolocator.requestPermission();
+
+      if (permission == LocationPermission.denied) {
+        print("Permission localisation refusée");
+        return false;
+      }
+    }
     if (permission == LocationPermission.deniedForever) {
+
+      print("Permission refusée définitivement");
+
+      await Geolocator.openAppSettings();
+
       return false;
     }
+
     return true;
   }
 
@@ -134,7 +164,6 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 
   void updateLocationFromMap(LatLng newCenter) {
     state = state.copyWith(
-      mapCenter: newCenter,
       destinationLocation: newCenter,
     );
 

@@ -16,7 +16,7 @@ import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 class UserNetworkServiceImpl implements UserNetworkService {
 
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token');
+  String tokens = GetStorage().read('token')??'';
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',

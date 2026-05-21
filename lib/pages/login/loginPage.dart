@@ -23,6 +23,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
+  @override
+  void initState() {
+    super.initState();
+
+    ref.listenManual(loginControllerProvider, (previous, next) {
+      if (next.isSuccess) {
+        context.go('/app/introUser');
+      }
+
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+          ),
+        );
+      }
+    });
+  }
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
@@ -91,43 +109,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final loginState = ref.watch(loginControllerProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    ref.listen(loginControllerProvider, (previous, next) {
-      if (next.isSuccess) {
-        context.go('/app/introUser');
-      }
-
-      if (next.error != null && next.error != previous?.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(Icons.error_outline, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    next.error!,
-                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: theme.colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    });
 
     return Scaffold(
       body: Container(

@@ -74,7 +74,7 @@ class User {
       gender: json['gender'] ?? '',
       birthDate: json['birth_date'] ?? '',
       commune: json['commune'] ?? '',
-      email: json['email'],
+      email: json['email']??'',
       role: json['role'] ?? 'passenger',
       photo: json['photo'],
       token: json['token'],

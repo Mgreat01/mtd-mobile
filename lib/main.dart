@@ -18,6 +18,7 @@ import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.d
 import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 import 'package:moto_taxi_digital_mobile/utils/navigationUtils.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 GetIt getIt = GetIt.instance;
 
@@ -59,6 +60,10 @@ void main() async{
 
   //chargement du fichier .env initialisation globale
   await AppConfig.initialize();
+
+  MapboxOptions.setAccessToken(
+    dotenv.env["MAPBOX_ACCESS_TOKEN"]!,
+  );
 
   runApp(ProviderScope(child: MyApplication()));
 }

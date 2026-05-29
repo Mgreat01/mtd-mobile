@@ -206,47 +206,148 @@ class UserNetworkServiceImpl implements UserNetworkService {
       return "Erreur lors du reverse geocoding";
     }
   }
+
   @override
-  Future<List<SearchResult>> searchAddresses(String query) async {
+  Future<List<SearchResult>> searchAddresses(
+      String query, {
+        LatLng? userLocation,
+      }) async {
+
     if (query.trim().length < 3) return [];
 
-    final encoded = Uri.encodeQueryComponent(query);
-    final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=5&addressdetails=1");
+    final encoded =
+    Uri.encodeQueryComponent(query);
+
+    String url =
+        "https://nominatim.openstreetmap.org/search"
+        "?q=$encoded"
+        "&format=json"
+        "&limit=15"
+        "&addressdetails=1";
+
+    // =========================
+    // PRIORITÉ VISUELLE AUX LIEUX PROCHES
+    // =========================
+
+    // IMPORTANT :
+    // on utilise seulement "viewbox"
+    // SANS bounded=1
+    // afin d'obtenir TOUS les résultats
+
+    if (userLocation != null) {
+
+      final lat = userLocation.latitude;
+      final lon = userLocation.longitude;
+
+      final left = lon - 0.08;
+      final right = lon + 0.08;
+      final top = lat + 0.08;
+      final bottom = lat - 0.08;
+
+      url +=
+      "&viewbox=$left,$top,$right,$bottom";
+    }
 
     try {
+
       final response = await http.get(
-        url,
+
+        Uri.parse(url),
+
         headers: {
-          "User-Agent": "moto_taxi_app (ephraimmonga5@gmail.com)" // 🔥 IMPORTANT
+          "User-Agent":
+          "moto_taxi_app (ephraimmonga5@gmail.com)"
         },
-      ).timeout(const Duration(seconds: 5));
+
+      ).timeout(
+        const Duration(seconds: 5),
+      );
 
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
+
+        final List data =
+        json.decode(response.body);
 
         if (data.isEmpty) return [];
 
-        return data.map((item) {
-          final lat = double.tryParse(item['lat'].toString());
-          final lon = double.tryParse(item['lon'].toString());
+        final Distance distance = Distance();
 
-          if (lat == null || lon == null) return null;
+        List<SearchResult> results = data.map((item) {
+
+          final lat =
+          double.tryParse(item['lat'].toString());
+
+          final lon =
+          double.tryParse(item['lon'].toString());
+
+          if (lat == null || lon == null) {
+            return null;
+          }
+
+          double? dist;
+
+          if (userLocation != null) {
+
+            dist = distance(
+
+              userLocation,
+
+              LatLng(lat, lon),
+            );
+          }
 
           return SearchResult(
+
             location: LatLng(lat, lon),
-            displayName: item['display_name'] ?? "Lieu inconnu",
+
+            displayName:
+            item['display_name'] ??
+                "Lieu inconnu",
+
+            distanceFromUser: dist,
           );
+
         }).whereType<SearchResult>().toList();
+
+        // =========================
+        // TRI PAR DISTANCE
+        // =========================
+
+        if (userLocation != null) {
+
+          results.sort(
+
+                (a, b) =>
+
+                (a.distanceFromUser ??
+                    double.infinity)
+
+                    .compareTo(
+
+                  b.distanceFromUser ??
+                      double.infinity,
+                ),
+          );
+        }
+
+        return results;
+
       } else {
-        print("Erreur Nominatim: ${response.statusCode}");
+
+        print(
+            "Erreur Nominatim: "
+                "${response.statusCode}"
+        );
       }
+
     } catch (e) {
+
       print("Erreur réseau search: $e");
     }
 
     return [];
   }
+
 
   @override
   Future<Wallet> getWallet() async {

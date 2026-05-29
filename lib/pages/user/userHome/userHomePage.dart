@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRacePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRaceState.dart';
 
@@ -71,8 +71,6 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     final notifier =
     ref.read(userHomeControllerProvider.notifier);
 
-    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
     final keyboardVisible =
         MediaQuery.of(context).viewInsets.bottom > 0;
 
@@ -91,7 +89,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
               key: const ValueKey("mapWidget"),
 
-              styleUri:MapboxConfig.navigationStyle,
+              styleUri: MapboxConfig.navigationStyle,
 
               cameraOptions: CameraOptions(
 
@@ -104,6 +102,42 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
                 zoom: 15,
               ),
+
+              onTapListener: (mapContext) async {
+
+                final lat = mapContext.point.coordinates.lat;
+                final lng = mapContext.point.coordinates.lng;
+
+                print("MAP CLICK => $lat, $lng");
+
+                final destination = LatLng(
+                  lat.toDouble(),
+                  lng.toDouble(),
+                );
+
+                notifier.updateLocationFromMap(
+                  destination,
+                );
+
+                await _mapboxMap?.flyTo(
+
+                  CameraOptions(
+
+                    center: Point(
+                      coordinates: Position(
+                        lng,
+                        lat,
+                      ),
+                    ),
+
+                    zoom: 16,
+                  ),
+
+                  MapAnimationOptions(
+                    duration: 1000,
+                  ),
+                );
+              },
 
               onMapCreated: (controller) async {
 

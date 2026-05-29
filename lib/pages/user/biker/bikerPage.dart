@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerCtrl.dart';
+import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
 import 'bikerState.dart';
 
 class BikerPage extends ConsumerStatefulWidget {
@@ -15,11 +16,35 @@ class BikerPage extends ConsumerStatefulWidget {
 
 
 class _BikerPageState extends ConsumerState<BikerPage> {
-  final MapController _mapController = MapController();
+  MapboxMap? _mapboxMap;
 
   @override
   void initState() {
     super.initState();
+
+    ref.listenManual(
+      bikerControllerProvider.select((s) => s.currentPosition),
+          (previous, next) {
+
+        if (previous != next) {
+
+          print("Move map => ${next.latitude}");
+
+          _mapboxMap?.flyTo(
+            CameraOptions(
+              center: Point(
+                coordinates: Position(
+                  next.longitude,
+                  next.latitude,
+                ),
+              ),
+              zoom: 15,
+            ),
+            MapAnimationOptions(duration: 1000),
+          );
+        }
+      },
+    );
 
     ref.listenManual(bikerControllerProvider, (prev, next) {
       final prevCount = prev?.notifications.length ?? 0;
@@ -30,9 +55,8 @@ class _BikerPageState extends ConsumerState<BikerPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${newNotif.title}"),
+            content: Text(newNotif.title),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -45,44 +69,38 @@ class _BikerPageState extends ConsumerState<BikerPage> {
     final notifier = ref.read(bikerControllerProvider.notifier);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    ref.listen(bikerControllerProvider.select((s) => s.currentPosition), (previous, next) {
-      if (next != previous) {
-        print("UI : Déplacement de la carte vers la latitude : ${next.latitude}");
-        _mapController.move(next, 15.0);
-      }
-    });
+
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
           // 1. FOND : CARTE
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: state.currentPosition,
-              initialZoom: 15.0,
+          MapWidget(
+            key: const ValueKey("mapWidget"),
+            styleUri:MapboxConfig.navigationStyle,
+
+            cameraOptions: CameraOptions(
+              center: Point(
+                coordinates: Position(
+                  state.currentPosition.longitude,
+                  state.currentPosition.latitude,
+                ),
+              ),
+              zoom: 15.0,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'moto_taxi_digital_mobile',
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: state.currentPosition,
-                    width: 60,
-                    height: 60,
-                    child: Icon(
-                      Icons.motorcycle,
-                      color: state.isOnline ? colorScheme.primary : colorScheme.error,
-                      size: 40,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+
+            onMapCreated: (controller) async {
+
+              _mapboxMap = controller;
+
+              await controller.location.updateSettings(
+                LocationComponentSettings(
+                  enabled: true,
+                  pulsingEnabled: true,
+                ),
+              );
+            },
           ),
           Positioned(
             top: 60,
@@ -129,8 +147,26 @@ class _BikerPageState extends ConsumerState<BikerPage> {
             child: FloatingActionButton(
               mini: true,
               backgroundColor: colorScheme.surface,
-              onPressed: () => _mapController.move(state.currentPosition, 15.0),
-              child: Icon(Icons.my_location, color: colorScheme.primary),
+
+              onPressed: () {
+                _mapboxMap?.flyTo(
+                  CameraOptions(
+                    center: Point(
+                      coordinates: Position(
+                        state.currentPosition.longitude,
+                        state.currentPosition.latitude,
+                      ),
+                    ),
+                    zoom: 15,
+                  ),
+                  MapAnimationOptions(duration: 1000),
+                );
+              },
+
+              child: Icon(
+                Icons.my_location,
+                color: colorScheme.primary,
+              ),
             ),
           ),
 
@@ -208,10 +244,8 @@ class _BikerPageState extends ConsumerState<BikerPage> {
   }
 
   Widget _buildServiceButton(BikerState state, BikerController notifier, ColorScheme colorScheme) {
-    // On récupère l'information de course active depuis le notifier
     final bool isBusy = notifier.isRaceActive;
 
-    // Cas 1 : Le motard est en pleine course (Occupé)
     if (isBusy) {
       return ElevatedButton.icon(
         onPressed: null, // Désactivé : on ne peut pas arrêter le service en course

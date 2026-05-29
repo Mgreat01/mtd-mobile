@@ -13,16 +13,107 @@ class BikerController extends StateNotifier<BikerState> {
   final BikerService _bikerService = getIt.get<BikerService>();
   final Ref ref;
   StreamSubscription<Position>? _positionSubscription;
+
+  StreamSubscription<ServiceStatus>? _gpsServiceSubscription;
+
   Timer? _notifTimer;
+
   List<AppNotification> _oldNotifications = [];
 
   BikerController(this.ref) : super(BikerState()) {
-    refreshData();
+    _init();
+  }
+
+  Future<void> _init() async {
+    /// écoute si l'utilisateur active/désactive le GPS
+    _listenLocationService();
+
+    /// tente de récupérer la position
+    await _initializeLocation();
+
+    await refreshData();
+
     _startNotificationPolling();
   }
 
-  // --- LOGIQUE DE SERVICE & GPS ---
+  /// =========================
+  /// ECOUTE ACTIVATION GPS
+  /// =========================
+  void _listenLocationService() {
+    _gpsServiceSubscription?.cancel();
 
+    _gpsServiceSubscription =
+        Geolocator.getServiceStatusStream().listen(
+              (ServiceStatus status) async {
+            print("Etat GPS : $status");
+
+            /// si le GPS vient d'être activé
+            if (status == ServiceStatus.enabled) {
+              await _initializeLocation();
+
+              /// si le biker est online
+              if (state.isOnline) {
+                _startLocationTracking();
+              }
+            }
+
+            /// si GPS coupé
+            if (status == ServiceStatus.disabled) {
+              print("GPS désactivé");
+
+              _positionSubscription?.cancel();
+            }
+          },
+        );
+  }
+
+  /// =========================
+  /// INITIALISATION POSITION
+  /// =========================
+  Future<void> _initializeLocation() async {
+    final hasPermission = await _handleLocationPermission();
+
+    if (!hasPermission) {
+      print("Permission GPS refusée");
+      return;
+    }
+
+    try {
+      Position position;
+
+      /// tente d'abord dernière position connue
+      final lastPosition = await Geolocator.getLastKnownPosition();
+
+      if (lastPosition != null) {
+        position = lastPosition;
+      } else {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best,
+          timeLimit: const Duration(seconds: 15),
+        );
+      }
+
+      final currentLatLng = LatLng(
+        position.latitude,
+        position.longitude,
+      );
+
+      state = state.copyWith(
+        currentPosition: currentLatLng,
+      );
+
+      print(
+        "Position biker : "
+            "${position.latitude}, ${position.longitude}",
+      );
+    } catch (e) {
+      print("Erreur récupération position biker : $e");
+    }
+  }
+
+  /// =========================
+  /// START / STOP SERVICE
+  /// =========================
   Future<void> toggleService() async {
     if (!state.isOnline) {
       bool hasPermission = await _handleLocationPermission();
@@ -32,27 +123,50 @@ class BikerController extends StateNotifier<BikerState> {
       }
     } else {
       _stopLocationTracking();
-      state = state.copyWith(isOnline: false);
+
+      state = state.copyWith(
+        isOnline: false,
+      );
     }
   }
 
   bool get isRaceActive {
-    final historyNotifier = ref.read(BikerHistoryControllerProvider.notifier);
+    final historyNotifier =
+    ref.read(BikerHistoryControllerProvider.notifier);
+
     return historyNotifier.isRaceActive;
   }
 
   Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return false;
+    bool serviceEnabled =
+    await Geolocator.isLocationServiceEnabled();
 
-    LocationPermission permission = await Geolocator.checkPermission();
+    if (!serviceEnabled) {
+      print("GPS désactivé");
+
+      await Geolocator.openLocationSettings();
+
+      return false;
+    }
+
+    LocationPermission permission =
+    await Geolocator.checkPermission();
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return false;
+
+      if (permission == LocationPermission.denied) {
+        print("Permission refusée");
+
+        return false;
+      }
     }
 
     if (permission == LocationPermission.deniedForever) {
+      print("Permission refusée définitivement");
+
       await Geolocator.openAppSettings();
+
       return false;
     }
     return true;
@@ -62,53 +176,83 @@ class BikerController extends StateNotifier<BikerState> {
     _positionSubscription?.cancel();
 
     try {
-      Position lastKnown = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
       );
-      _sendPositionToServer(lastKnown); // Envoi initial
+
+      await _sendPositionToServer(position);
     } catch (e) {
-      print("GPS Error: $e");
+      print("Erreur position initiale : $e");
     }
 
-
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen((Position position) {
-      _sendPositionToServer(position);
-    });
+    _positionSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 5,
+          ),
+        ).listen(
+              (Position position) async {
+            await _sendPositionToServer(position);
+          },
+        );
   }
 
-Future<void> _sendPositionToServer(Position position) async {
-    state = state.copyWith(
-      currentPosition: LatLng(position.latitude, position.longitude),
+  /// =========================
+  /// ENVOI POSITION SERVEUR
+  /// =========================
+  Future<void> _sendPositionToServer(
+      Position position,
+      ) async {
+    final newPosition = LatLng(
+      position.latitude,
+      position.longitude,
     );
 
+    state = state.copyWith(
+      currentPosition: newPosition,
+    );
+
+    print(
+      "Nouvelle position : "
+          "${position.latitude}, ${position.longitude}",
+    );
 
     if (state.isOnline) {
-      await _bikerService.updateLocation(
-        lat: position.latitude,
-        lng: position.longitude,
-        isActive: true,
-      );
+      try {
+        await _bikerService.updateLocation(
+          lat: position.latitude,
+          lng: position.longitude,
+          isActive: true,
+        );
+      } catch (e) {
+        print("Erreur update location : $e");
+      }
     }
   }
 
-void _stopLocationTracking() {
+  /// =========================
+  /// STOP TRACKING
+  /// =========================
+  void _stopLocationTracking() {
     _positionSubscription?.cancel();
     _positionSubscription = null;
 
-   _bikerService.updateLocation(
+    _bikerService.updateLocation(
       lat: state.currentPosition.latitude,
       lng: state.currentPosition.longitude,
       isActive: false,
     );
   }
 
-   Future<void> refreshData() async {
-    state = state.copyWith(isLoading: true);
+  /// =========================
+  /// REFRESH DATA
+  /// =========================
+  Future<void> refreshData() async {
+    state = state.copyWith(
+      isLoading: true,
+    );
+
     try {
       final results = await Future.wait([
         _bikerService.getBalance(),
@@ -117,36 +261,56 @@ void _stopLocationTracking() {
       ]);
 
       final walletBalance = results[0].toString();
-      final List<Race> allRaces = results[1] as List<Race>;
-      final List<dynamic> priceLists = results[2] as List<dynamic>;
 
+      final List<Race> allRaces =
+      results[1] as List<Race>;
 
-      final String today = DateTime.now().toIso8601String().split('T')[0];
-      final finishedToday = allRaces.where((r) =>
-      r.status == 'completed' && r.date.toString().contains(today)
+      final List<dynamic> priceLists =
+      results[2] as List<dynamic>;
+
+      final String today =
+      DateTime.now().toIso8601String().split('T')[0];
+
+      final finishedToday = allRaces.where(
+            (r) =>
+        r.status == 'completed' &&
+            r.date.toString().contains(today),
       ).toList();
 
-      // 2. Calcul du revenu
       double dailyTotal = 0.0;
+
       for (var race in finishedToday) {
         final priceObj = priceLists.firstWhere(
-              (p) => p['id'].toString() == race.priceListId.toString(),
+              (p) =>
+          p['id'].toString() ==
+              race.priceListId.toString(),
           orElse: () => null,
         );
+
         if (priceObj != null) {
-          dailyTotal += double.tryParse(priceObj['base_fare'].toString()) ?? 0.0;
+          dailyTotal +=
+              double.tryParse(
+                priceObj['base_fare'].toString(),
+              ) ??
+                  0.0;
         }
       }
 
       state = state.copyWith(
         walletBalance: "$walletBalance CDF",
         races: allRaces,
-        completedRacesCount: finishedToday.where((r) => r.status == 'completed').length,
+        completedRacesCount:
+        finishedToday
+            .where((r) => r.status == 'completed')
+            .length,
         dailyRevenue: dailyTotal,
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(
+        isLoading: false,
+      );
+
       print("Erreur BikerController: $e");
     }
   }
@@ -162,19 +326,28 @@ void _stopLocationTracking() {
 
   Future<void> fetchNotifications() async {
     try {
-      final data = await _bikerService.getNotifications();
+      final data =
+      await _bikerService.getNotifications();
 
       final newNotifications = data.where((n) {
-        return !_oldNotifications.any((o) => o.id.toString() == n.id.toString());
+        return !_oldNotifications.any(
+              (o) => o.id.toString() == n.id.toString(),
+        );
       }).toList();
 
       // update state
       state = state.copyWith(
         notifications: data,
-        unreadCount: data.where((n) => !n.isRead).length,
+        unreadCount:
+        data.where((n) => !n.isRead).length,
       );
 
-
+      if (newNotifications.isNotEmpty) {
+        print(
+          "Nouvelles notifications : "
+              "${newNotifications.length}",
+        );
+      }
 
       _oldNotifications = data;
     } catch (e) {
@@ -182,10 +355,23 @@ void _stopLocationTracking() {
     }
   }
 
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
 
+    _gpsServiceSubscription?.cancel();
+
+    _notifTimer?.cancel();
+
+    super.dispose();
+  }
 }
 
-
-final bikerControllerProvider = StateNotifierProvider.autoDispose<BikerController, BikerState>((ref) {
-  return BikerController(ref);
-});
+final bikerControllerProvider =
+StateNotifierProvider.autoDispose<
+    BikerController,
+    BikerState>(
+      (ref) {
+    return BikerController(ref);
+  },
+);

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRacePage.dart';
@@ -17,7 +17,7 @@ class UserHomePage extends ConsumerStatefulWidget {
 }
 
 class _UserHomePageState extends ConsumerState<UserHomePage> {
-  final MapController _mapController = MapController();
+  MapboxMap? _mapboxMap;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -38,9 +38,17 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             print("Nouvelle position reçue : "
                 "${next.pickupLocation.latitude}");
 
-            _mapController.move(
-              next.pickupLocation,
-              15,
+            _mapboxMap?.flyTo(
+              CameraOptions(
+                center: Point(
+                  coordinates: Position(
+                    next.pickupLocation.longitude,
+                    next.pickupLocation.latitude,
+                  ),
+                ),
+                zoom: 15,
+              ),
+              MapAnimationOptions(duration: 1000),
             );
           }
         },
@@ -51,109 +59,174 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _mapController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(userHomeControllerProvider);
-    final notifier = ref.read(userHomeControllerProvider.notifier);
 
+    final state =
+    ref.watch(userHomeControllerProvider);
+
+    final notifier =
+    ref.read(userHomeControllerProvider.notifier);
+
+    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
+    final keyboardVisible =
+        MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
+
+      resizeToAvoidBottomInset: true,
+
       body: Stack(
+
         children: [
-          /// MAP
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: state.mapCenter,
-              initialZoom: 15,
-              onPositionChanged: (position, hasGesture) {
-                // Le curseur rouge au centre représentera la zone ciblée par le geste
-                if (hasGesture && position.center != null) {
-                  notifier.updateLocationFromMap(position.center!);
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate:
-                'https://api.mapbox.com/styles/v1/'
-                    '${MapboxConfig.navigationStyle}'
-                    '/tiles/256/{z}/{x}/{y}@2x'
-                    '?access_token={accessToken}',
+          GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: MapWidget(
 
-                additionalOptions: {
-                  'accessToken': MapboxConfig.accessToken,
-                },
+              key: const ValueKey("mapWidget"),
 
-                userAgentPackageName: 'com.moto_taxi.app',
+              styleUri:MapboxConfig.navigationStyle,
 
-                maxZoom: 20,
-              ),
+              cameraOptions: CameraOptions(
 
-              MarkerLayer(
-                markers: [
-                  Marker(
-
-                    point: state.pickupLocation,
-                    width: 20,
-                    height: 20,
-                    child: Container(
-                      child: Icon(
-                          Icons.location_on,
-                          color: Colors.blue,
-                        size: 40,
-                      ),
-                      // decoration: const BoxDecoration(
-                      //   color: Colors.blue,
-                      //   shape: BoxShape.circle,
-                      //   boxShadow: [
-                      //     BoxShadow(color: Colors.black26, blurRadius: 4)
-                      //   ],
-                      // ),
-                    ),
+                center: Point(
+                  coordinates: Position(
+                    state.pickupLocation.longitude,
+                    state.pickupLocation.latitude,
                   ),
-                ],
+                ),
+
+                zoom: 15,
               ),
-            ],
+
+              onMapCreated: (controller) async {
+
+                _mapboxMap = controller;
+
+                final pointManager =
+                await controller.annotations
+                    .createPointAnnotationManager();
+
+                await pointManager.create(
+
+                  PointAnnotationOptions(
+
+                    geometry: Point(
+                      coordinates: Position(
+                        state.pickupLocation.longitude,
+                        state.pickupLocation.latitude,
+                      ),
+                    ),
+
+                    iconSize: 1.5,
+
+                    textField: "📍",
+                  ),
+                );
+              },
+            )
           ),
 
-
-          /// SEARCH BAR + RESULTS
           Positioned(
-            top: 145,
+
+            top: 80,
             left: 20,
             right: 20,
+
             child: Column(
+
               children: [
+
                 _buildSearchBar(notifier),
+
                 if (state.searchResults.isNotEmpty)
-                  _buildResultsOverlay(state, notifier),
+
+                  _buildResultsOverlay(
+                    state,
+                    notifier,
+                    keyboardVisible,
+                  ),
               ],
             ),
           ),
 
-          /// BOOKING CARD
           Positioned(
+
             left: 20,
             right: 20,
             bottom: 140,
-            child: _buildBookingCard(
-              context,
-              state,
-              notifier,
+
+            child: AnimatedSlide(
+
+              duration: const Duration(
+                milliseconds: 250,
+              ),
+
+              curve: Curves.easeInOut,
+
+              offset: keyboardVisible
+                  ? const Offset(0, 3)
+                  : Offset.zero,
+
+              child: AnimatedOpacity(
+
+                duration: const Duration(
+                  milliseconds: 200,
+                ),
+
+                opacity: keyboardVisible ? 0 : 1,
+
+                child: IgnorePointer(
+
+                  ignoring: keyboardVisible,
+
+                  child: _buildBookingCard(
+                    context,
+                    state,
+                    notifier,
+                  ),
+                ),
+              ),
             ),
           ),
 
-          /// LOADER
+          IgnorePointer(
+
+            child: Center(
+
+              child: Padding(
+
+                padding: const EdgeInsets.only(
+                  bottom: 80,
+                ),
+
+                // child: Icon(
+                //
+                //   Icons.place,
+                //
+                //   color: Colors.red.shade700,
+                //
+                //   size: 45,
+                // ),
+              ),
+            ),
+          ),
+
           if (state.isLoading)
+
             Container(
+
               color: Colors.black26,
+
               child: const Center(
-                child: CircularProgressIndicator(),
+                child:
+                CircularProgressIndicator(),
               ),
             ),
         ],
@@ -199,36 +272,152 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   }
 
   Widget _buildResultsOverlay(
+
       UserHomeState state,
+
       UserHomeController notifier,
+
+      bool keyboardVisible,
       ) {
+
     return Container(
-      margin: const EdgeInsets.only(top: 5),
-      constraints: const BoxConstraints(
-        maxHeight: 250,
+
+      margin: const EdgeInsets.only(top: 8),
+
+      constraints: BoxConstraints(
+
+        maxHeight:
+        keyboardVisible ? 420 : 250,
       ),
+
       decoration: BoxDecoration(
+
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+
+        borderRadius:
+        BorderRadius.circular(18),
+
+        boxShadow: [
+
+          BoxShadow(
+
+            color:
+            Colors.black.withOpacity(.08),
+
+            blurRadius: 15,
+          ),
+        ],
       ),
-      child: ListView.builder(
-        itemCount: state.searchResults.length,
+
+      child: ListView.separated(
+
+        shrinkWrap: true,
+
+        itemCount:
+        state.searchResults.length,
+
+        separatorBuilder: (_, __) =>
+            Divider(
+              height: 1,
+              color: Colors.grey.shade200,
+            ),
+
         itemBuilder: (_, index) {
-          final result = state.searchResults[index];
+
+          final result =
+          state.searchResults[index];
 
           return ListTile(
-            title: Text(result.displayName),
-            onTap: () {
-              notifier.selectSearchResult(result);
 
-              _mapController.move(
-                result.location,
-                16,
+            contentPadding:
+            const EdgeInsets.symmetric(
+
+              horizontal: 15,
+              vertical: 5,
+            ),
+
+            leading: Container(
+
+              padding: const EdgeInsets.all(10),
+
+              decoration: BoxDecoration(
+
+                color:
+                Colors.green.withOpacity(.1),
+
+                shape: BoxShape.circle,
+              ),
+
+              child: const Icon(
+
+                Icons.location_on,
+
+                color: Colors.green,
+              ),
+            ),
+
+            title: Text(
+
+              result.displayName,
+
+              maxLines: 2,
+
+              overflow:
+              TextOverflow.ellipsis,
+
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            subtitle:
+            result.distanceFromUser != null
+
+                ? Text(
+
+              result.distanceFromUser! < 1000
+
+                  ? "${result.distanceFromUser!.toStringAsFixed(0)} m"
+
+                  : "${(result.distanceFromUser! / 1000).toStringAsFixed(1)} km",
+
+              style: TextStyle(
+                color: Colors.grey.shade600,
+              ),
+            )
+
+                : null,
+
+            onTap: () {
+
+              notifier.selectSearchResult(
+                result,
               );
 
-              _searchController.text = result.displayName;
+              _mapboxMap?.flyTo(
 
-              FocusScope.of(context).unfocus();
+                CameraOptions(
+
+                  center: Point(
+                    coordinates: Position(
+                      result.location.longitude,
+                      result.location.latitude,
+                    ),
+                  ),
+
+                  zoom: 16,
+                ),
+
+                MapAnimationOptions(
+                  duration: 1000,
+                ),
+              );
+
+              _searchController.text =
+                  result.displayName;
+
+              FocusScope.of(context)
+                  .unfocus();
             },
           );
         },

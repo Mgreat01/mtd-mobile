@@ -71,8 +71,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     final notifier =
     ref.read(userHomeControllerProvider.notifier);
 
-    final keyboardVisible =
-        MediaQuery.of(context).viewInsets.bottom > 0;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
 
@@ -467,14 +466,16 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     final current = state.currentAddress ?? "Localisation...";
     final destination = state.destinationAddress ?? "Choisir destination";
 
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.1),
+            color: theme.colorScheme.shadow.withOpacity(.1),
             blurRadius: 15,
           ),
         ],
@@ -487,19 +488,19 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             children: [
               Column(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.my_location,
-                    color: Colors.green,
+                    color: theme.colorScheme.primary,
                     size: 18,
                   ),
                   Container(
                     width: 1,
                     height: 20,
-                    color: Colors.grey.shade300,
+                    color: theme.colorScheme.outline,
                   ),
-                  const Icon(
+                  Icon(
                     Icons.location_on,
-                    color: Colors.red,
+                    color: theme.colorScheme.error,
                     size: 18,
                   ),
                 ],
@@ -513,7 +514,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                       current,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -523,9 +524,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                       destination,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.black54,
-                      ),
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ],
                 ),
@@ -544,9 +543,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                     state.destinationAddress == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        "Choisissez une destination",
-                      ),
+                      content: Text("Choisissez une destination"),
                     ),
                   );
                   return;
@@ -561,12 +558,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                         startAddress: current,
                         amount: 10000,
                         priceListId: 1,
-
-                        /// DEPART = vraie position client
                         startLat: state.pickupLocation.latitude,
                         startLng: state.pickupLocation.longitude,
-
-                        /// DESTINATION
                         endLat: state.destinationLocation!.latitude,
                         endLng: state.destinationLocation!.longitude,
                       ),
@@ -575,17 +568,15 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(
                 "RÉSERVER",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -593,4 +584,5 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       ),
     );
   }
+
 }

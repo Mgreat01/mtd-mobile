@@ -69,17 +69,16 @@ class _BikerPageState extends ConsumerState<BikerPage> {
     final notifier = ref.read(bikerControllerProvider.notifier);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
+    final bool isServiceActive = state.isOnline || notifier.isRaceActive;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
-          // 1. FOND : CARTE
+          // Carte Mapbox
           MapWidget(
             key: const ValueKey("mapWidget"),
-            styleUri:MapboxConfig.navigationStyle,
-
+            styleUri: MapboxConfig.navigationStyle,
             cameraOptions: CameraOptions(
               center: Point(
                 coordinates: Position(
@@ -89,11 +88,8 @@ class _BikerPageState extends ConsumerState<BikerPage> {
               ),
               zoom: 15.0,
             ),
-
             onMapCreated: (controller) async {
-
               _mapboxMap = controller;
-
               await controller.location.updateSettings(
                 LocationComponentSettings(
                   enabled: true,
@@ -102,52 +98,14 @@ class _BikerPageState extends ConsumerState<BikerPage> {
               );
             },
           ),
-          Positioned(
-            top: 60,
-            right: 20,
-            child: GestureDetector(
-              onTap: () {
-                _showNotifications(context, state);
-              },
-              child: Stack(
-                children: [
-                  const Icon(Icons.notifications, size: 30),
-                  if (state.unreadCount > 0)
-                    Positioned(
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          state.unreadCount.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
-                        ),
-                      ),
-                    )
-                ],
-              ),
-            ),
-          ),
 
-          // 2. OVERLAY : CARTE DE REVENUS
-          Positioned(
-            top: 60,
-            left: 20,
-            right: 20,
-            child: _buildRevenueCard(state, theme, colorScheme),
-          ),
-
-          // 3. BOUTON RECENTRER
+          // Bouton recentrer
           Positioned(
             right: 20,
-            bottom: 330,
+            bottom: isServiceActive ? 130 : 330,
             child: FloatingActionButton(
               mini: true,
               backgroundColor: colorScheme.surface,
-
               onPressed: () {
                 _mapboxMap?.flyTo(
                   CameraOptions(
@@ -162,34 +120,43 @@ class _BikerPageState extends ConsumerState<BikerPage> {
                   MapAnimationOptions(duration: 1000),
                 );
               },
-
-              child: Icon(
-                Icons.my_location,
-                color: colorScheme.primary,
+              child: Icon(Icons.my_location, color: colorScheme.primary),
+            ),
+          ),
+          // Bouton service
+          if (isServiceActive)
+            Positioned(
+              bottom: 200,
+              left: 30,
+              right: 30,
+              child: _buildServiceButton(state, notifier, colorScheme),
+            )
+          else
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Column(
+                children: [
+                  _buildRevenueCard(state, theme, colorScheme),
+                  const SizedBox(height: 12),
+                  _buildServiceButton(state, notifier, colorScheme),
+                  const SizedBox(height: 12),
+                  _buildQuickAccess(theme, colorScheme),
+                ],
               ),
             ),
-          ),
-
-          // 4. PANNEAU DE CONTRÔLE
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                _buildServiceButton(state, notifier, colorScheme),
-                const SizedBox(height: 12),
-                _buildQuickAccess(theme, colorScheme),
-              ],
-            ),
-          ),
 
           if (state.isLoading)
-            LinearProgressIndicator(color: colorScheme.primary, backgroundColor: colorScheme.primaryContainer),
+            LinearProgressIndicator(
+              color: colorScheme.primary,
+              backgroundColor: colorScheme.primaryContainer,
+            ),
         ],
       ),
     );
   }
+
 
   Widget _buildRevenueCard(BikerState state, ThemeData theme, ColorScheme colorScheme) {
     return Card(

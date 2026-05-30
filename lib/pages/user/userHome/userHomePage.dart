@@ -8,6 +8,8 @@ import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRaceState.dart
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
 
 class UserHomePage extends ConsumerStatefulWidget {
   const UserHomePage({super.key});
@@ -19,6 +21,10 @@ class UserHomePage extends ConsumerStatefulWidget {
 class _UserHomePageState extends ConsumerState<UserHomePage> {
   MapboxMap? _mapboxMap;
   final TextEditingController _searchController = TextEditingController();
+  PointAnnotationManager? _pointManager;
+
+  PointAnnotation? _destinationMarker;
+  PointAnnotation? _userMarker;
 
   @override
   void initState() {
@@ -33,33 +39,109 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       ref.listenManual<UserHomeState>(
         userHomeControllerProvider,
             (previous, next) {
-          if (previous?.pickupLocation != next.pickupLocation) {
+              if (previous?.pickupLocation != next.pickupLocation) {
 
-            print("Nouvelle position reçue : "
-                "${next.pickupLocation.latitude}");
+                print(
+                  "Nouvelle position reçue : "
+                      "${next.pickupLocation.latitude}",
+                );
 
-            _mapboxMap?.flyTo(
-              CameraOptions(
-                center: Point(
-                  coordinates: Position(
-                    next.pickupLocation.longitude,
-                    next.pickupLocation.latitude,
+                _showUserMarker(
+                  next.pickupLocation.latitude,
+                  next.pickupLocation.longitude,
+                );
+
+                _mapboxMap?.flyTo(
+                  CameraOptions(
+                    center: Point(
+                      coordinates: Position(
+                        next.pickupLocation.longitude,
+                        next.pickupLocation.latitude,
+                      ),
+                    ),
+                    zoom: 15,
                   ),
-                ),
-                zoom: 15,
-              ),
-              MapAnimationOptions(duration: 1000),
-            );
-          }
+                  MapAnimationOptions(duration: 1000),
+                );
+              }
         },
       );
     });
   }
 
+  Future<Uint8List> _loadDestinationMarker() async {
+    final data = await rootBundle.load(
+      'assets/images/arrival.png',
+    );
+
+    return data.buffer.asUint8List();
+  }
+  Future<Uint8List> _loadUserMarker() async {
+    final data = await rootBundle.load(
+      'assets/images/locations.png',
+    );
+
+    return data.buffer.asUint8List();
+  }
+
+  Future<void> _showDestinationMarker(
+      double latitude,
+      double longitude,
+      ) async {
+
+    if (_pointManager == null) return;
+
+    if (_destinationMarker != null) {
+      await _pointManager!.delete(_destinationMarker!);
+    }
+
+    final image = await _loadDestinationMarker();
+
+    _destinationMarker = await _pointManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(
+          coordinates: Position(
+            longitude,
+            latitude,
+          ),
+        ),
+        image: image,
+        iconSize: 0.1,
+      ),
+    );
+  }
+
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+  Future<void> _showUserMarker(
+      double latitude,
+      double longitude,
+      ) async {
+
+    if (_pointManager == null) return;
+
+    final image = await _loadUserMarker();
+
+    if (_userMarker != null) {
+      await _pointManager!.delete(_userMarker!);
+    }
+
+    _userMarker = await _pointManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(
+          coordinates: Position(
+            longitude,
+            latitude,
+          ),
+        ),
+        image: image,
+        iconSize: 0.1,
+      ),
+    );
   }
 
   @override
@@ -117,6 +199,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                 notifier.updateLocationFromMap(
                   destination,
                 );
+                await _showDestinationMarker(
+                  lat.toDouble(),
+                  lng.toDouble(),
+                );
 
                 await _mapboxMap?.flyTo(
 
@@ -139,54 +225,17 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               },
 
               onMapCreated: (controller) async {
-
                 _mapboxMap = controller;
 
-                final pointManager =
-                await controller.annotations
+                _pointManager = await controller.annotations
                     .createPointAnnotationManager();
 
-                await pointManager.create(
-
-                  PointAnnotationOptions(
-
-                    geometry: Point(
-                      coordinates: Position(
-                        state.pickupLocation.longitude,
-                        state.pickupLocation.latitude,
-                      ),
-                    ),
-
-                    iconSize: 1.5,
-
-                    textField: "📍",
-                  ),
+                await _showUserMarker(
+                  state.pickupLocation.latitude,
+                  state.pickupLocation.longitude,
                 );
               },
             )
-          ),
-
-          Positioned(
-
-            top: 80,
-            left: 20,
-            right: 20,
-
-            child: Column(
-
-              children: [
-
-                _buildSearchBar(notifier),
-
-                if (state.searchResults.isNotEmpty)
-
-                  _buildResultsOverlay(
-                    state,
-                    notifier,
-                    keyboardVisible,
-                  ),
-              ],
-            ),
           ),
 
           Positioned(
@@ -226,6 +275,29 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   ),
                 ),
               ),
+            ),
+          ),
+
+          Positioned(
+
+            top: 80,
+            left: 20,
+            right: 20,
+
+            child: Column(
+
+              children: [
+
+                _buildSearchBar(notifier),
+
+                if (state.searchResults.isNotEmpty)
+
+                  _buildResultsOverlay(
+                    state,
+                    notifier,
+                    keyboardVisible,
+                  ),
+              ],
             ),
           ),
 
@@ -421,11 +493,16 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
                 : null,
 
-            onTap: () {
+            onTap: () async {
 
               notifier.selectSearchResult(
                 result,
               );
+              await _showDestinationMarker(
+              result.location.latitude,
+              result.location.longitude,
+              );
+
 
               _mapboxMap?.flyTo(
 

@@ -71,14 +71,14 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
   Future<Uint8List> _loadDestinationMarker() async {
     final data = await rootBundle.load(
-      'assets/images/arrival.png',
+      'assets/images/locations.png',
     );
 
     return data.buffer.asUint8List();
   }
   Future<Uint8List> _loadUserMarker() async {
     final data = await rootBundle.load(
-      'assets/images/locations.png',
+      'assets/images/arrival.png',
     );
 
     return data.buffer.asUint8List();

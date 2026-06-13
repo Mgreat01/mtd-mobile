@@ -377,157 +377,95 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   }
 
   Widget _buildResultsOverlay(
-
       UserHomeState state,
-
       UserHomeController notifier,
-
       bool keyboardVisible,
       ) {
-
     return Container(
-
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: 0, left: 16, right: 16, bottom: 8),
 
       constraints: BoxConstraints(
-
-        maxHeight:
-        keyboardVisible ? 420 : 250,
+        maxHeight: keyboardVisible ? 500 : 400,
       ),
-
       decoration: BoxDecoration(
-
         color: Colors.white,
-
-        borderRadius:
-        BorderRadius.circular(18),
-
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
-
           BoxShadow(
-
-            color:
-            Colors.black.withOpacity(.08),
-
+            color: Colors.black.withOpacity(.08),
             blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-
       child: ListView.separated(
-
         shrinkWrap: true,
-
-        itemCount:
-        state.searchResults.length,
-
-        separatorBuilder: (_, __) =>
-            Divider(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
-
+        padding: EdgeInsets.zero,
+        itemCount: state.searchResults.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: Colors.grey.shade200,
+        ),
         itemBuilder: (_, index) {
-
-          final result =
-          state.searchResults[index];
-
+          final result = state.searchResults[index];
           return ListTile(
-
-            contentPadding:
-            const EdgeInsets.symmetric(
-
+            contentPadding: const EdgeInsets.symmetric(
               horizontal: 15,
               vertical: 5,
             ),
-
             leading: Container(
-
               padding: const EdgeInsets.all(10),
-
               decoration: BoxDecoration(
-
-                color:
-                Colors.green.withOpacity(.1),
-
+                color: Colors.green.withOpacity(.1),
                 shape: BoxShape.circle,
               ),
-
               child: const Icon(
-
                 Icons.location_on,
-
                 color: Colors.green,
               ),
             ),
-
             title: Text(
-
               result.displayName,
-
               maxLines: 2,
-
-              overflow:
-              TextOverflow.ellipsis,
-
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
               ),
             ),
-
-            subtitle:
-            result.distanceFromUser != null
-
+            subtitle: result.distanceFromUser != null
                 ? Text(
-
               result.distanceFromUser! < 1000
-
                   ? "${result.distanceFromUser!.toStringAsFixed(0)} m"
-
                   : "${(result.distanceFromUser! / 1000).toStringAsFixed(1)} km",
-
               style: TextStyle(
                 color: Colors.grey.shade600,
               ),
             )
-
                 : null,
-
             onTap: () async {
-
-              notifier.selectSearchResult(
-                result,
-              );
+              notifier.selectSearchResult(result);
               await _showDestinationMarker(
-              result.location.latitude,
-              result.location.longitude,
+                result.location.latitude,
+                result.location.longitude,
               );
-
 
               _mapboxMap?.flyTo(
-
                 CameraOptions(
-
                   center: Point(
                     coordinates: Position(
                       result.location.longitude,
                       result.location.latitude,
                     ),
                   ),
-
                   zoom: 16,
                 ),
-
                 MapAnimationOptions(
                   duration: 1000,
                 ),
               );
 
-              _searchController.text =
-                  result.displayName;
-
-              FocusScope.of(context)
-                  .unfocus();
+              _searchController.text = result.displayName;
+              FocusScope.of(context).unfocus();
             },
           );
         },

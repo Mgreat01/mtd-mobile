@@ -47,7 +47,6 @@ class ConfirmRacePage extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // INFOS MOTARD
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -79,7 +78,6 @@ class ConfirmRacePage extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // RÉCAPITULATIF TRAJET
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -100,7 +98,6 @@ class ConfirmRacePage extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // PAIEMENT
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -121,27 +118,28 @@ class ConfirmRacePage extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 20),
                // child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
               ),
+
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(color: Colors.white),
+              child: ElevatedButton(
+                onPressed: state.isLoading ? null : () async {
+                  final race = await notifier.confirmAndCreate();
+                  if (race != null && context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF008E53),
+                  minimumSize: const Size(double.infinity, 55),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: state.isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("CONFIRMER LA COURSE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(color: Colors.white),
-        child: ElevatedButton(
-          onPressed: state.isLoading ? null : () async {
-            final race = await notifier.confirmAndCreate();
-            if (race != null && context.mounted) {
-              Navigator.pop(context); // Retour ou vers page de suivi
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF008E53),
-            minimumSize: const Size(double.infinity, 55),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: state.isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : const Text("CONFIRMER LA COURSE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       ),
     );

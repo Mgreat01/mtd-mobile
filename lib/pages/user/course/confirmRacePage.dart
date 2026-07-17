@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'confirmRaceCtrl.dart';
 import 'confirmRaceState.dart';
 
@@ -26,8 +27,11 @@ class ConfirmRacePage extends ConsumerWidget {
         }
       },
     );
-    final state = ref.watch(confirmRaceControllerProvider(params));
-    final notifier = ref.read(confirmRaceControllerProvider(params).notifier);
+    final userState =
+    ref.watch(userHomeControllerProvider);
+
+    final notifier =
+    ref.read(userHomeControllerProvider.notifier);
     final theme = Theme.of(context);
 
 
@@ -113,7 +117,7 @@ class ConfirmRacePage extends ConsumerWidget {
               ),
             ),
 
-            if (state.errorMessage != null)
+            if (userState.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 20),
                // child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
@@ -123,21 +127,45 @@ class ConfirmRacePage extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(color: Colors.white),
               child: ElevatedButton(
-                onPressed: state.isLoading ? null : () async {
-                  final race = await notifier.confirmAndCreate();
-                  if (race != null && context.mounted) {
+                onPressed: userState.isLoading
+                    ? null
+                    : () async {
+
+                  await notifier.confirmBooking(
+                    destinationName: params.destinationName,
+                    priceListId: params.priceListId ?? 1,
+                  );
+
+                  if (context.mounted) {
                     Navigator.pop(context);
                   }
                 },
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF008E53),
                   minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: state.isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("CONFIRMER LA COURSE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
+
+                child: userState.isLoading
+                    ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                    : const Text(
+                  "CONFIRMER LA COURSE",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              )
             ),
           ],
         ),

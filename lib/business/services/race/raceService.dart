@@ -8,4 +8,5 @@ Future <Race> getRaceById(int id);
 Future <int> deletedRace(int id);
 Future <Race> completedRace( dynamic race);
 Future <Race> updateRaceBiker(int id);
+Future<RaceRouteModel> getRaceRoute(int raceId);
 }

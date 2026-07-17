@@ -26,8 +26,12 @@ class BikerHistoryPage extends ConsumerWidget {
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
           children: [
-            _buildRaceList(notifier.activeRaces, notifier, state.isLoading),
-            _buildRaceList(notifier.historyRaces, notifier, state.isLoading, isHistory: true),
+            Container(child: RefreshIndicator(
+                onRefresh: () => notifier.fetchRaces(),
+                child: _buildRaceList(notifier.activeRaces, notifier, state.isLoading))),
+            Container(child: RefreshIndicator(
+                onRefresh: () => notifier.fetchRaces(),
+                child: _buildRaceList(notifier.historyRaces, notifier, state.isLoading, isHistory: true))),
           ],
         ),
       ),

@@ -44,7 +44,14 @@ class ConfirmRaceController extends StateNotifier<ConfirmRaceState> {
       print(" longitude ${state.errorMessage}");
       debugPrint(" longitude ${state.errorMessage}");
 
-      final createdRace = await _raceService.createRace(newRace);
+      debugPrint("blo blo ${newRace}");
+      final createdRace =
+      await _raceService.createRace(newRace);
+
+      final route =
+      await _raceService.getRaceRoute(
+        createdRace.id,
+      );
 
       state = state.copyWith(isLoading: false);
       return createdRace;
@@ -54,4 +61,5 @@ class ConfirmRaceController extends StateNotifier<ConfirmRaceState> {
       return null;
     }
   }
+
 }

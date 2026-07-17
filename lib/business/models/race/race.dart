@@ -70,13 +70,100 @@ class Race {
       'destination': destination,
       'lat_start': startLat,
       'lng_start': startLng,
-      'end_lat': endLat,
-      'end_lng': endLng,
+      'lat_end': endLat,
+      'lng_end': endLng,
       'status': status,
       'pin_code': pinCode,
       'biker_id': bikerId,
       'client_id': clientId,
       'price_list_id': priceListId,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'deleted_at': deletedAt?.toIso8601String(),
+    };
+  }
+
+}
+
+
+class RaceRouteModel {
+  final int raceId;
+  final RouteData route;
+
+  RaceRouteModel({
+    required this.raceId,
+    required this.route,
+  });
+
+  factory RaceRouteModel.fromJson(Map<String, dynamic> json) {
+    return RaceRouteModel(
+      raceId: json['race_id'],
+      route: RouteData.fromJson(json['route']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'race_id': raceId,
+      'route': route.toJson(),
+    };
+  }
+}
+
+class RouteData {
+  final Geometry geometry;
+  final double distance;
+  final double duration;
+  final String polyline;
+
+  RouteData({
+    required this.geometry,
+    required this.distance,
+    required this.duration,
+    required this.polyline,
+  });
+
+  factory RouteData.fromJson(Map<String, dynamic> json) {
+    return RouteData(
+      geometry: Geometry.fromJson(json['geometry']),
+      distance: (json['distance'] as num).toDouble(),
+      duration: (json['duration'] as num).toDouble(),
+      polyline: json['polyline'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'geometry': geometry.toJson(),
+      'distance': distance,
+      'duration': duration,
+      'polyline': polyline,
+    };
+  }
+}
+
+class Geometry {
+  final String type;
+  final List<List<double>> coordinates;
+
+  Geometry({
+    required this.type,
+    required this.coordinates,
+  });
+
+  factory Geometry.fromJson(Map<String, dynamic> json) {
+    return Geometry(
+      type: json['type'],
+      coordinates: (json['coordinates'] as List)
+          .map((coord) => (coord as List).map((c) => (c as num).toDouble()).toList())
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'coordinates': coordinates,
     };
   }
 }

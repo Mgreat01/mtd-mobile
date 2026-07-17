@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
@@ -33,12 +34,16 @@ class RaceServiceImpl implements RaceService {
       headers: _headers(tokens),
       body: jsonEncode(race.toJson()),
     );
-
+    debugPrint("bla bla ${response.body}");
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       print("Course créée avec succès : ${data['id']}");
-      return Race.fromJson(data);
+      final bodyy = jsonDecode(response.body);
+
+      final race = Race.fromJson(bodyy["race"]);
+
+      return race;
     } else {
       print("echec de la course : ${ response.body} et la status ${response.statusCode}");
       throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
@@ -104,6 +109,29 @@ class RaceServiceImpl implements RaceService {
   }
 
 
+  @override
+  Future<RaceRouteModel> getRaceRoute(int raceId) async {
 
+    final response = await http.get(
+
+      Uri.parse(
+          '$baseUrl/api/races/$raceId/route'
+      ),
+
+      headers: _headers(tokens),
+    );
+
+    if(response.statusCode==200){
+
+      return RaceRouteModel.fromJson(
+
+          jsonDecode(response.body)
+
+      );
+
+    }
+
+    throw Exception("Impossible de récupérer la route");
+  }
 
 }

@@ -19,6 +19,42 @@ class UserHomePage extends ConsumerStatefulWidget {
 }
 
 class _UserHomePageState extends ConsumerState<UserHomePage> {
+  PolylineAnnotationManager? _polylineManager;
+  PolylineAnnotation? _routePolyline;
+  Future<void> _drawRoute(List<List<double>> coordinates) async {
+
+    if (_polylineManager == null) return;
+
+    if (_routePolyline != null) {
+      await _polylineManager!.delete(_routePolyline!);
+    }
+
+    final line = LineString(
+
+      coordinates: coordinates
+          .map(
+            (c) => Position(
+          c[0], // longitude
+          c[1], // latitude
+        ),
+      )
+          .toList(),
+    );
+
+    _routePolyline = await _polylineManager!.create(
+
+      PolylineAnnotationOptions(
+
+        geometry: line,
+
+        lineColor: 0xFF1E88E5,
+
+        lineWidth: 6,
+
+        lineOpacity: 0.9,
+      ),
+    );
+  }
   MapboxMap? _mapboxMap;
   final TextEditingController _searchController = TextEditingController();
   PointAnnotationManager? _pointManager;
@@ -67,6 +103,19 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         },
       );
     });
+    ref.listenManual<UserHomeState>(
+      userHomeControllerProvider,
+          (previous, next) async {
+
+        if (previous?.routeCoordinates != next.routeCoordinates &&
+            next.routeCoordinates.isNotEmpty) {
+
+          await _drawRoute(
+            next.routeCoordinates,
+          );
+        }
+      },
+    );
   }
 
   Future<Uint8List> _loadDestinationMarker() async {
@@ -229,6 +278,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
                 _pointManager = await controller.annotations
                     .createPointAnnotationManager();
+                _polylineManager =
+                await controller.annotations.createPolylineAnnotationManager();
 
                 await _showUserMarker(
                   state.pickupLocation.latitude,

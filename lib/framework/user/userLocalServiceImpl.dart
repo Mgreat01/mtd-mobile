@@ -12,6 +12,7 @@ class UserLocalServiceImpl implements UserLocalService {
   Future<bool> deleteUser() async {
     if (box == null) return false;
     await box!.remove("user");
+    await box!.remove("data");
     return true;
   }
 

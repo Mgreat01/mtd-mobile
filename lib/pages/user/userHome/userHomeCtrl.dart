@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
@@ -49,7 +50,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 
     await _getUserCurrentLocation();
 
-    await refreshBikers();
+    // await refreshBikers();
 
     _startRefreshTimer();
   }
@@ -381,17 +382,28 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       final createdRace =
       await _raceService.createRace(newRace);
 
+      final route =
+      await _raceService.getRaceRoute(
+        createdRace.id,
+      );
+      final distance =
+          route.route.distance / 1000;
+
+      final duration =
+          route.route.duration / 60;
+
       state = state.copyWith(
         currentRace: createdRace,
+        currentRoute: route,
+        routeCoordinates: route.route.geometry.coordinates,
+        routeDistanceKm: route.route.distance / 1000,
+        routeDurationMin: route.route.duration / 60,
         step: UserStep.waitingForBiker,
         isLoading: false,
       );
     } catch (e) {
-
-      state = state.copyWith(
-        isLoading: false,
-      );
-
+      String errorMsg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: errorMsg);
       print("Erreur confirmBooking: $e");
     }
   }
@@ -414,6 +426,33 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       print("Erreur annulation: $e");
     }
   }
+
+  // Future<void> previewRoute() async {
+  //
+  //   if(state.destinationLocation == null) return;
+  //
+  //   final route =
+  //   await _raceService.getRaceRoute(
+  //
+  //     startLat: state.pickupLocation.latitude,
+  //     startLng: state.pickupLocation.longitude,
+  //
+  //     endLat: state.destinationLocation!.latitude,
+  //     endLng: state.destinationLocation!.longitude,
+  //   );
+  //
+  //   state = state.copyWith(
+  //
+  //     routeCoordinates:
+  //     route.route.geometry.coordinates,
+  //
+  //     routeDistanceKm:
+  //     route.route.distance / 1000,
+  //
+  //     routeDurationMin:
+  //     route.route.duration / 60,
+  //   );
+  // }
 }
 
 final userHomeControllerProvider =

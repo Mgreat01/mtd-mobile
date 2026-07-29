@@ -39,25 +39,45 @@ class Race {
   });
 
   factory Race.fromJson(Map<String, dynamic> json) {
+    int parseRequiredInt(String key) {
+      final value = int.tryParse(json[key]?.toString() ?? '');
+      if (value == null) {
+        throw FormatException("Champ '$key' invalide dans la course");
+      }
+      return value;
+    }
+
+    DateTime parseDate(String key) {
+      return DateTime.tryParse(json[key]?.toString() ?? '') ?? DateTime.now();
+    }
+
     return Race(
-      id: json['id'] as int,
+      id: parseRequiredInt('id'),
       name: json['name'] ?? '',
       date: json['date'] ?? '',
       startingPoint: json['starting_point'] ?? '',
       destination: json['destination'] ?? '',
-      startLat: json['start_lat'] != null ? double.parse(json['start_lat'].toString()) : null,
-      startLng: json['start_lng'] != null ? double.parse(json['start_lng'].toString()) : null,
-      endLat: json['end_lat'] != null ? double.parse(json['end_lat'].toString()) : null,
-      endLng: json['end_lng'] != null ? double.parse(json['end_lng'].toString()) : null,
+      startLat: json['start_lat'] != null
+          ? double.parse(json['start_lat'].toString())
+          : null,
+      startLng: json['start_lng'] != null
+          ? double.parse(json['start_lng'].toString())
+          : null,
+      endLat: json['end_lat'] != null
+          ? double.parse(json['end_lat'].toString())
+          : null,
+      endLng: json['end_lng'] != null
+          ? double.parse(json['end_lng'].toString())
+          : null,
 
       status: json['status'] ?? 'pending',
       pinCode: json['pin_code']?.toString(),
-      bikerId: json['biker_id'] != null ? json['biker_id'] as int : null,
-      clientId: json['client_id'] as int,
-      priceListId: json['price_list_id'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-      deletedAt: json['deleted_at'] != null ? DateTime.parse(json['deleted_at']) : null,
+      bikerId: int.tryParse(json['biker_id']?.toString() ?? ''),
+      clientId: parseRequiredInt('client_id'),
+      priceListId: int.tryParse(json['price_list_id']?.toString() ?? ''),
+      createdAt: parseDate('created_at'),
+      updatedAt: parseDate('updated_at'),
+      deletedAt: DateTime.tryParse(json['deleted_at']?.toString() ?? ''),
     );
   }
 
@@ -68,10 +88,10 @@ class Race {
       'date': date,
       'starting_point': startingPoint,
       'destination': destination,
-      'lat_start': startLat,
-      'lng_start': startLng,
-      'lat_end': endLat,
-      'lng_end': endLng,
+      'start_lat': startLat,
+      'start_lng': startLng,
+      'end_lat': endLat,
+      'end_lng': endLng,
       'status': status,
       'pin_code': pinCode,
       'biker_id': bikerId,
@@ -82,31 +102,30 @@ class Race {
       'deleted_at': deletedAt?.toIso8601String(),
     };
   }
-
 }
-
 
 class RaceRouteModel {
   final int raceId;
   final RouteData route;
 
-  RaceRouteModel({
-    required this.raceId,
-    required this.route,
-  });
+  RaceRouteModel({required this.raceId, required this.route});
 
   factory RaceRouteModel.fromJson(Map<String, dynamic> json) {
+    final routeJson = json['route_to_passenger'] ?? json['route'];
+    if (routeJson is! Map<String, dynamic>) {
+      throw const FormatException(
+        "Données d'itinéraire absentes de la réponse",
+      );
+    }
+
     return RaceRouteModel(
-      raceId: json['race_id'],
-      route: RouteData.fromJson(json['route']),
+      raceId: int.parse(json['race_id'].toString()),
+      route: RouteData.fromJson(routeJson),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'race_id': raceId,
-      'route': route.toJson(),
-    };
+    return {'race_id': raceId, 'route': route.toJson()};
   }
 }
 
@@ -128,7 +147,7 @@ class RouteData {
       geometry: Geometry.fromJson(json['geometry']),
       distance: (json['distance'] as num).toDouble(),
       duration: (json['duration'] as num).toDouble(),
-      polyline: json['polyline'],
+      polyline: json['polyline']?.toString() ?? '',
     );
   }
 
@@ -146,24 +165,21 @@ class Geometry {
   final String type;
   final List<List<double>> coordinates;
 
-  Geometry({
-    required this.type,
-    required this.coordinates,
-  });
+  Geometry({required this.type, required this.coordinates});
 
   factory Geometry.fromJson(Map<String, dynamic> json) {
     return Geometry(
       type: json['type'],
       coordinates: (json['coordinates'] as List)
-          .map((coord) => (coord as List).map((c) => (c as num).toDouble()).toList())
+          .map(
+            (coord) =>
+                (coord as List).map((c) => (c as num).toDouble()).toList(),
+          )
           .toList(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'coordinates': coordinates,
-    };
+    return {'type': type, 'coordinates': coordinates};
   }
 }

@@ -12,6 +12,11 @@ class BikerState {
   final bool isLoading;
   final List<AppNotification> notifications;
   final int unreadCount;
+  final Race? activeRace;
+  final List<List<double>> routeCoordinates;
+  final double? routeDistanceKm;
+  final double? routeDurationMin;
+  final String? routeError;
 
   BikerState({
     this.isOnline = false,
@@ -23,6 +28,11 @@ class BikerState {
     this.isLoading = false,
     this.notifications = const [],
     this.unreadCount = 0,
+    this.activeRace,
+    this.routeCoordinates = const [],
+    this.routeDistanceKm,
+    this.routeDurationMin,
+    this.routeError,
   });
 
   BikerState copyWith({
@@ -35,6 +45,13 @@ class BikerState {
     bool? isLoading,
     List<AppNotification>? notifications,
     int? unreadCount,
+    Race? activeRace,
+    bool clearActiveRace = false,
+    List<List<double>>? routeCoordinates,
+    double? routeDistanceKm,
+    double? routeDurationMin,
+    String? routeError,
+    bool clearRouteError = false,
   }) {
     return BikerState(
       isOnline: isOnline ?? this.isOnline,
@@ -46,6 +63,11 @@ class BikerState {
       isLoading: isLoading ?? this.isLoading,
       notifications: notifications ?? this.notifications,
       unreadCount: unreadCount ?? this.unreadCount,
+      activeRace: clearActiveRace ? null : activeRace ?? this.activeRace,
+      routeCoordinates: routeCoordinates ?? this.routeCoordinates,
+      routeDistanceKm: routeDistanceKm ?? this.routeDistanceKm,
+      routeDurationMin: routeDurationMin ?? this.routeDurationMin,
+      routeError: clearRouteError ? null : routeError ?? this.routeError,
     );
   }
 }

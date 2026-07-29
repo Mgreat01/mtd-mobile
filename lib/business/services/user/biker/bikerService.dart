@@ -7,12 +7,21 @@ abstract class BikerService {
   Future<List<Biker>> getAllBikers();
   Future<Biker> getBikerById(int id);
   Future<void> deleteBiker(int id);
-  Future<List<dynamic>> getBikerRaces(int bikerId);
+  Future<List<Race>> getBikerRaces();
   Future<List<Biker>> getAvailableBikers();
-  Future <dynamic> getBalance();
-  Future <List<Race>> getCourses();
-  Future <dynamic> getPrices();
-  Future<void> updateLocation({required double lat, required double lng, required bool isActive});
+  Future<dynamic> getBalance();
+  Future<List<Race>> getCourses();
+  Future<dynamic> getPrices();
+  Future<RaceRouteModel?> getBikerPassengerTrack({
+    required double lat,
+    required double lng,
+    required int raceId,
+  });
+  Future<void> updateLocation({
+    required double lat,
+    required double lng,
+    required bool isActive,
+  });
   Future<List<BikerMarkerData>> getActiveBikers();
   Future<List<AppNotification>> getNotifications();
 }

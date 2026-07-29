@@ -15,11 +15,12 @@ class BikerHistoryState {
     List<Race>? allRaces,
     bool? isLoading,
     String? errorMessage,
+    bool clearError = false,
   }) {
     return BikerHistoryState(
       allRaces: allRaces ?? this.allRaces,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
 }

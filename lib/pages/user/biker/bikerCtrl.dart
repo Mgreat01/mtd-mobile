@@ -6,7 +6,6 @@ import 'package:moto_taxi_digital_mobile/business/models/notification/appNotific
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
-import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/courseBiker/BikerHistoryCtrl.dart';
 import 'bikerState.dart';
 
 class BikerController extends StateNotifier<BikerState> {
@@ -42,29 +41,28 @@ class BikerController extends StateNotifier<BikerState> {
   void _listenLocationService() {
     _gpsServiceSubscription?.cancel();
 
-    _gpsServiceSubscription =
-        Geolocator.getServiceStatusStream().listen(
-              (ServiceStatus status) async {
-            print("Etat GPS : $status");
+    _gpsServiceSubscription = Geolocator.getServiceStatusStream().listen((
+      ServiceStatus status,
+    ) async {
+      print("Etat GPS : $status");
 
-            /// si le GPS vient d'être activé
-            if (status == ServiceStatus.enabled) {
-              await _initializeLocation();
+      /// si le GPS vient d'être activé
+      if (status == ServiceStatus.enabled) {
+        await _initializeLocation();
 
-              /// si le biker est online
-              if (state.isOnline) {
-                _startLocationTracking();
-              }
-            }
+        /// si le biker est online
+        if (state.isOnline) {
+          _startLocationTracking();
+        }
+      }
 
-            /// si GPS coupé
-            if (status == ServiceStatus.disabled) {
-              print("GPS désactivé");
+      /// si GPS coupé
+      if (status == ServiceStatus.disabled) {
+        print("GPS désactivé");
 
-              _positionSubscription?.cancel();
-            }
-          },
-        );
+        _positionSubscription?.cancel();
+      }
+    });
   }
 
   /// =========================
@@ -93,18 +91,13 @@ class BikerController extends StateNotifier<BikerState> {
         );
       }
 
-      final currentLatLng = LatLng(
-        position.latitude,
-        position.longitude,
-      );
+      final currentLatLng = LatLng(position.latitude, position.longitude);
 
-      state = state.copyWith(
-        currentPosition: currentLatLng,
-      );
+      state = state.copyWith(currentPosition: currentLatLng);
 
       print(
         "Position biker : "
-            "${position.latitude}, ${position.longitude}",
+        "${position.latitude}, ${position.longitude}",
       );
     } catch (e) {
       print("Erreur récupération position biker : $e");
@@ -124,22 +117,72 @@ class BikerController extends StateNotifier<BikerState> {
     } else {
       _stopLocationTracking();
 
-      state = state.copyWith(
-        isOnline: false,
-      );
+      state = state.copyWith(isOnline: false);
     }
   }
 
   bool get isRaceActive {
-    final historyNotifier =
-    ref.read(BikerHistoryControllerProvider.notifier);
+    return state.activeRace != null ||
+        state.races.any((race) => race.status == 'ongoing');
+  }
 
-    return historyNotifier.isRaceActive;
+  Future<void> applyRaceUpdate(Race race) async {
+    final races = [
+      for (final existing in state.races)
+        if (existing.id == race.id) race else existing,
+      if (!state.races.any((existing) => existing.id == race.id)) race,
+    ];
+
+    state = state.copyWith(races: races);
+    if (race.status == 'ongoing') {
+      state = state.copyWith(activeRace: race);
+      await _loadRouteToPassenger(race);
+    } else if (state.activeRace?.id == race.id) {
+      _clearActiveRoute();
+    }
+  }
+
+  Future<void> _loadRouteToPassenger(Race race) async {
+    state = state.copyWith(clearRouteError: true);
+    try {
+      final route = await _bikerService.getBikerPassengerTrack(
+        raceId: race.id,
+        lat: state.currentPosition.latitude,
+        lng: state.currentPosition.longitude,
+      );
+
+      if (route == null || route.route.geometry.coordinates.length < 2) {
+        throw Exception("Aucun itinéraire reçu du serveur");
+      }
+
+      state = state.copyWith(
+        activeRace: race,
+        routeCoordinates: route.route.geometry.coordinates,
+        routeDistanceKm: route.route.distance / 1000,
+        routeDurationMin: route.route.duration / 60,
+        clearRouteError: true,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        activeRace: race,
+        routeCoordinates: const [],
+        routeError: "Impossible de charger l'itinéraire : $e",
+      );
+    }
+  }
+
+  void _clearActiveRoute() {
+    state = state.copyWith(
+      clearActiveRace: true,
+      routeCoordinates: const [],
+      routeDistanceKm: 0,
+      routeDurationMin: 0,
+      clearRouteError: true,
+    );
   }
 
   Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled =
-    await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
       print("GPS désactivé");
@@ -149,8 +192,7 @@ class BikerController extends StateNotifier<BikerState> {
       return false;
     }
 
-    LocationPermission permission =
-    await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -191,31 +233,22 @@ class BikerController extends StateNotifier<BikerState> {
             accuracy: LocationAccuracy.bestForNavigation,
             distanceFilter: 5,
           ),
-        ).listen(
-              (Position position) async {
-            await _sendPositionToServer(position);
-          },
-        );
+        ).listen((Position position) async {
+          await _sendPositionToServer(position);
+        });
   }
 
   /// =========================
   /// ENVOI POSITION SERVEUR
   /// =========================
-  Future<void> _sendPositionToServer(
-      Position position,
-      ) async {
-    final newPosition = LatLng(
-      position.latitude,
-      position.longitude,
-    );
+  Future<void> _sendPositionToServer(Position position) async {
+    final newPosition = LatLng(position.latitude, position.longitude);
 
-    state = state.copyWith(
-      currentPosition: newPosition,
-    );
+    state = state.copyWith(currentPosition: newPosition);
 
     print(
       "Nouvelle position : "
-          "${position.latitude}, ${position.longitude}",
+      "${position.latitude}, ${position.longitude}",
     );
 
     if (state.isOnline) {
@@ -249,9 +282,7 @@ class BikerController extends StateNotifier<BikerState> {
   /// REFRESH DATA
   /// =========================
   Future<void> refreshData() async {
-    state = state.copyWith(
-      isLoading: true,
-    );
+    state = state.copyWith(isLoading: true);
 
     try {
       final results = await Future.wait([
@@ -262,54 +293,53 @@ class BikerController extends StateNotifier<BikerState> {
 
       final walletBalance = results[0].toString();
 
-      final List<Race> allRaces =
-      results[1] as List<Race>;
+      final List<Race> allRaces = results[1] as List<Race>;
 
-      final List<dynamic> priceLists =
-      results[2] as List<dynamic>;
+      final List<dynamic> priceLists = results[2] as List<dynamic>;
 
-      final String today =
-      DateTime.now().toIso8601String().split('T')[0];
+      final String today = DateTime.now().toIso8601String().split('T')[0];
 
-      final finishedToday = allRaces.where(
-            (r) =>
-        r.status == 'completed' &&
-            r.date.toString().contains(today),
-      ).toList();
+      final finishedToday = allRaces
+          .where(
+            (r) => r.status == 'completed' && r.date.toString().contains(today),
+          )
+          .toList();
 
       double dailyTotal = 0.0;
 
       for (var race in finishedToday) {
         final priceObj = priceLists.firstWhere(
-              (p) =>
-          p['id'].toString() ==
-              race.priceListId.toString(),
+          (p) => p['id'].toString() == race.priceListId.toString(),
           orElse: () => null,
         );
 
         if (priceObj != null) {
           dailyTotal +=
-              double.tryParse(
-                priceObj['base_fare'].toString(),
-              ) ??
-                  0.0;
+              double.tryParse(priceObj['base_fare'].toString()) ?? 0.0;
         }
       }
 
       state = state.copyWith(
         walletBalance: "$walletBalance CDF",
         races: allRaces,
-        completedRacesCount:
-        finishedToday
+        completedRacesCount: finishedToday
             .where((r) => r.status == 'completed')
             .length,
         dailyRevenue: dailyTotal,
         isLoading: false,
       );
+
+      final activeRace = allRaces
+          .where((race) => race.status == 'ongoing')
+          .firstOrNull;
+      if (activeRace != null) {
+        state = state.copyWith(activeRace: activeRace);
+        await _loadRouteToPassenger(activeRace);
+      } else if (state.activeRace != null) {
+        _clearActiveRoute();
+      }
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-      );
+      state = state.copyWith(isLoading: false);
 
       print("Erreur BikerController: $e");
     }
@@ -320,32 +350,30 @@ class BikerController extends StateNotifier<BikerState> {
 
     _notifTimer = Timer.periodic(
       const Duration(seconds: 10),
-          (_) => fetchNotifications(),
+      (_) => fetchNotifications(),
     );
   }
 
   Future<void> fetchNotifications() async {
     try {
-      final data =
-      await _bikerService.getNotifications();
+      final data = await _bikerService.getNotifications();
 
       final newNotifications = data.where((n) {
         return !_oldNotifications.any(
-              (o) => o.id.toString() == n.id.toString(),
+          (o) => o.id.toString() == n.id.toString(),
         );
       }).toList();
 
       // update state
       state = state.copyWith(
         notifications: data,
-        unreadCount:
-        data.where((n) => !n.isRead).length,
+        unreadCount: data.where((n) => !n.isRead).length,
       );
 
       if (newNotifications.isNotEmpty) {
         print(
           "Nouvelles notifications : "
-              "${newNotifications.length}",
+          "${newNotifications.length}",
         );
       }
 
@@ -368,10 +396,6 @@ class BikerController extends StateNotifier<BikerState> {
 }
 
 final bikerControllerProvider =
-StateNotifierProvider.autoDispose<
-    BikerController,
-    BikerState>(
-      (ref) {
-    return BikerController(ref);
-  },
-);
+    StateNotifierProvider.autoDispose<BikerController, BikerState>((ref) {
+      return BikerController(ref);
+    });

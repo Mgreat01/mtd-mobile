@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerCtrl.dart';
 import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
@@ -13,38 +13,77 @@ class BikerPage extends ConsumerStatefulWidget {
   ConsumerState<BikerPage> createState() => _BikerPageState();
 }
 
-
-
 class _BikerPageState extends ConsumerState<BikerPage> {
   MapboxMap? _mapboxMap;
+  PolylineAnnotationManager? _polylineManager;
+  PolylineAnnotation? _routePolyline;
+  PointAnnotationManager? _pointManager;
+  PointAnnotation? _passengerMarker;
+
+  Future<void> _renderRoute(BikerState state) async {
+    if (_polylineManager == null || _pointManager == null) return;
+
+    if (_routePolyline != null) {
+      await _polylineManager!.delete(_routePolyline!);
+      _routePolyline = null;
+    }
+    if (_passengerMarker != null) {
+      await _pointManager!.delete(_passengerMarker!);
+      _passengerMarker = null;
+    }
+    if (state.routeCoordinates.length < 2) return;
+
+    final coordinates = state.routeCoordinates
+        .where((coordinate) => coordinate.length >= 2)
+        .map((coordinate) => Position(coordinate[0], coordinate[1]))
+        .toList();
+    if (coordinates.length < 2) return;
+
+    _routePolyline = await _polylineManager!.create(
+      PolylineAnnotationOptions(
+        geometry: LineString(coordinates: coordinates),
+        lineColor: 0xFF1565C0,
+        lineWidth: 7,
+        lineOpacity: 0.9,
+      ),
+    );
+
+    final markerData = await rootBundle.load('assets/images/location.png');
+    _passengerMarker = await _pointManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(coordinates: coordinates.last),
+        image: markerData.buffer.asUint8List(),
+        iconSize: 0.12,
+      ),
+    );
+
+    final middle = coordinates[coordinates.length ~/ 2];
+    await _mapboxMap?.flyTo(
+      CameraOptions(center: Point(coordinates: middle), zoom: 13),
+      MapAnimationOptions(duration: 1000),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
 
-    ref.listenManual(
-      bikerControllerProvider.select((s) => s.currentPosition),
-          (previous, next) {
+    ref.listenManual(bikerControllerProvider.select((s) => s.currentPosition), (
+      previous,
+      next,
+    ) {
+      if (previous != next) {
+        print("Move map => ${next.latitude}");
 
-        if (previous != next) {
-
-          print("Move map => ${next.latitude}");
-
-          _mapboxMap?.flyTo(
-            CameraOptions(
-              center: Point(
-                coordinates: Position(
-                  next.longitude,
-                  next.latitude,
-                ),
-              ),
-              zoom: 15,
-            ),
-            MapAnimationOptions(duration: 1000),
-          );
-        }
-      },
-    );
+        _mapboxMap?.flyTo(
+          CameraOptions(
+            center: Point(coordinates: Position(next.longitude, next.latitude)),
+            zoom: 15,
+          ),
+          MapAnimationOptions(duration: 1000),
+        );
+      }
+    });
 
     ref.listenManual(bikerControllerProvider, (prev, next) {
       final prevCount = prev?.notifications.length ?? 0;
@@ -61,6 +100,15 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         );
       }
     });
+
+    ref.listenManual(
+      bikerControllerProvider.select((state) => state.routeCoordinates),
+      (previous, next) {
+        if (previous != next) {
+          _renderRoute(ref.read(bikerControllerProvider));
+        }
+      },
+    );
   }
 
   @override
@@ -90,14 +138,24 @@ class _BikerPageState extends ConsumerState<BikerPage> {
             ),
             onMapCreated: (controller) async {
               _mapboxMap = controller;
+              _polylineManager = await controller.annotations
+                  .createPolylineAnnotationManager();
+              _pointManager = await controller.annotations
+                  .createPointAnnotationManager();
               await controller.location.updateSettings(
-                LocationComponentSettings(
-                  enabled: true,
-                  pulsingEnabled: true,
-                ),
+                LocationComponentSettings(enabled: true, pulsingEnabled: true),
               );
+              await _renderRoute(state);
             },
           ),
+
+          if (state.activeRace != null)
+            Positioned(
+              top: 105,
+              left: 20,
+              right: 20,
+              child: _buildActiveRouteCard(state, theme, colorScheme),
+            ),
 
           // Bouton recentrer
           Positioned(
@@ -157,8 +215,60 @@ class _BikerPageState extends ConsumerState<BikerPage> {
     );
   }
 
+  Widget _buildActiveRouteCard(
+    BikerState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    final race = state.activeRace!;
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Course n° ${race.id} · Passager",
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              race.startingPoint,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (state.routeCoordinates.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                "${state.routeDistanceKm?.toStringAsFixed(1) ?? '--'} km"
+                " · ${state.routeDurationMin?.ceil() ?? '--'} min",
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            if (state.routeError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                state.routeError!,
+                style: TextStyle(color: colorScheme.error, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget _buildRevenueCard(BikerState state, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildRevenueCard(
+    BikerState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Card(
       elevation: 2,
       color: colorScheme.surface,
@@ -176,17 +286,28 @@ class _BikerPageState extends ConsumerState<BikerPage> {
               ),
             ),
             const SizedBox(height: 15),
-            _rowInfo("Revenus d'aujourd'hui", "${state.dailyRevenue} CDF", colorScheme),
-            _rowInfo("Courses terminées", "${state.completedRacesCount}", colorScheme),
+            _rowInfo(
+              "Revenus d'aujourd'hui",
+              "${state.dailyRevenue} CDF",
+              colorScheme,
+            ),
+            _rowInfo(
+              "Courses terminées",
+              "${state.completedRacesCount}",
+              colorScheme,
+            ),
             _rowInfo("Solde wallet", state.walletBalance, colorScheme),
             const Divider(height: 30),
             TextButton(
               onPressed: () {},
               child: Text(
                 "VOIR MES REVENUS",
-                style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -199,32 +320,51 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: colorScheme.outline, fontSize: 14)),
-          Text(value, style: TextStyle(
+          Text(
+            label,
+            style: TextStyle(color: colorScheme.outline, fontSize: 14),
+          ),
+          Text(
+            value,
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
-              color: colorScheme.onSurface
-          )),
+              color: colorScheme.onSurface,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildServiceButton(BikerState state, BikerController notifier, ColorScheme colorScheme) {
+  Widget _buildServiceButton(
+    BikerState state,
+    BikerController notifier,
+    ColorScheme colorScheme,
+  ) {
     final bool isBusy = notifier.isRaceActive;
 
     if (isBusy) {
       return ElevatedButton.icon(
-        onPressed: null, // Désactivé : on ne peut pas arrêter le service en course
+        onPressed:
+            null, // Désactivé : on ne peut pas arrêter le service en course
         icon: const Icon(Icons.directions_bike, color: Colors.white70),
         label: const Text(
           "COURSE EN COURS...",
-          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange.shade800.withOpacity(0.6), // Couleur d'avertissement
+          backgroundColor: Colors.orange.shade800.withOpacity(
+            0.6,
+          ), // Couleur d'avertissement
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       );
     }
@@ -238,10 +378,16 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       ),
       label: Text(
         state.isOnline ? "ARRÊTER LE SERVICE" : "COMMENCER LE SERVICE",
-        style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+        style: TextStyle(
+          color: colorScheme.onPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: state.isOnline ? colorScheme.error : colorScheme.primary,
+        backgroundColor: state.isOnline
+            ? colorScheme.error
+            : colorScheme.primary,
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -255,7 +401,10 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
-          BoxShadow(color: colorScheme.shadow.withOpacity(0.05), blurRadius: 20)
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 20,
+          ),
         ],
       ),
       child: Column(
@@ -263,7 +412,11 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         children: [
           Text(
             "Accès rapide",
-            style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 16),
           GridView.count(
@@ -300,7 +453,10 @@ class _BikerPageState extends ConsumerState<BikerPage> {
           Flexible(
             child: Text(
               label,
-              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -308,6 +464,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       ),
     );
   }
+
   void _showNotifications(BuildContext context, BikerState state) {
     showModalBottomSheet(
       context: context,

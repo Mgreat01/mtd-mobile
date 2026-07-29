@@ -6,13 +6,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/biker/biker.dart';
-import 'package:moto_taxi_digital_mobile/business/models/wallet/wallet.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 import '../../../utils/appConfig.dart';
 
 class BikerServiceImpl implements BikerService {
-
   String get baseUrl => AppConfig.apiUrl;
   String tokens = GetStorage().read('token');
 
@@ -24,21 +22,15 @@ class BikerServiceImpl implements BikerService {
 
   @override
   Future<List<Biker>> getAllBikers() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers'),
-    );
+    final response = await http.get(Uri.parse('$baseUrl/api/bikers'));
 
     final data = jsonDecode(response.body);
-    return (data['data'] as List)
-        .map((e) => Biker.fromJson(e))
-        .toList();
+    return (data['data'] as List).map((e) => Biker.fromJson(e)).toList();
   }
 
   @override
   Future<Biker> getBikerById(int id) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/$id'),
-    );
+    final response = await http.get(Uri.parse('$baseUrl/api/bikers/$id'));
 
     return Biker.fromJson(jsonDecode(response.body));
   }
@@ -47,33 +39,44 @@ class BikerServiceImpl implements BikerService {
   Future<void> deleteBiker(int id) async {
     await http.delete(
       Uri.parse('$baseUrl/api/bikers/$id'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
   }
 
   @override
-  Future<List<dynamic>> getBikerRaces(int bikerId) async {
+  Future<List<Race>> getBikerRaces() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/races'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
 
+    if (response.statusCode != 200) {
+      throw Exception(
+        "Impossible de charger l'historique (${response.statusCode})",
+      );
+    }
     final data = jsonDecode(response.body);
-    print(data['races']);
-    return data['races'];
+    final dynamic raceData = data is List
+        ? data
+        : data['races'] ?? data['data'];
+    if (raceData is! List) {
+      throw const FormatException("Historique absent de la réponse");
+    }
+    return raceData
+        .whereType<Map<String, dynamic>>()
+        .map(Race.fromJson)
+        .toList();
   }
 
   @override
   Future<List<Biker>> getAvailableBikers() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/available'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
 
     final data = jsonDecode(response.body);
-    return (data['data'] as List)
-        .map((e) => Biker.fromJson(e))
-        .toList();
+    return (data['data'] as List).map((e) => Biker.fromJson(e)).toList();
   }
 
   @override
@@ -92,11 +95,21 @@ class BikerServiceImpl implements BikerService {
       Uri.parse('$baseUrl/api/bikers/new-races'),
       headers: _headers(tokens),
     );
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Impossible de charger les courses (${response.statusCode})',
+      );
+    }
     final data = jsonDecode(response.body);
-    final raceData = data['races'];
-    print("ls courses sont de ces cotes la ${raceData}");
-    return (raceData as List)
-        .map((e) => Race.fromJson(e))
+    final dynamic raceData = data is List
+        ? data
+        : data['races'] ?? data['data'];
+    if (raceData is! List) {
+      throw const FormatException("Liste de courses absente de la réponse");
+    }
+    return raceData
+        .whereType<Map<String, dynamic>>()
+        .map(Race.fromJson)
         .toList();
   }
 
@@ -111,11 +124,14 @@ class BikerServiceImpl implements BikerService {
     final reponse = data['price_lists'];
     debugPrint("voila les prix ${reponse}");
     return reponse;
-
   }
 
   @override
-  Future<void> updateLocation({required double lat, required double lng, required bool isActive}) async {
+  Future<void> updateLocation({
+    required double lat,
+    required double lng,
+    required bool isActive,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/biker/update-location'),
@@ -134,6 +150,7 @@ class BikerServiceImpl implements BikerService {
       debugPrint("Erreur réseau updateLocation: $e");
     }
   }
+
   @override
   Future<List<BikerMarkerData>> getActiveBikers() async {
     final response = await http.get(
@@ -185,6 +202,40 @@ class BikerServiceImpl implements BikerService {
       print("TOKEN: $tokens");
       debugPrint("Status code: ${response.statusCode}");
       throw Exception("Erreur notifications");
+    }
+  }
+
+  Future<RaceRouteModel?> getBikerPassengerTrack({
+    required int raceId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/biker/bikerPassengerTrack'),
+        headers: _headers(tokens),
+        body: jsonEncode({
+          'race_id': raceId,
+          'latitude': lat,
+          'longitude': lng,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Réponse track : ${response.body}');
+        final data = jsonDecode(response.body);
+        final routeData =
+            data is Map<String, dynamic> && data['data'] is Map<String, dynamic>
+            ? data['data'] as Map<String, dynamic>
+            : data as Map<String, dynamic>;
+        return RaceRouteModel.fromJson(routeData);
+      } else {
+        debugPrint("Erreur serveur: ${response.statusCode} - ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Erreur réseau getBikerPassengerTrack: $e");
+      return null;
     }
   }
 }

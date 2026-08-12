@@ -120,7 +120,7 @@ class ConfirmRacePage extends ConsumerWidget {
             if (userState.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 20),
-               // child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
+                //child: Text(userState.errorMessage!, style: const TextStyle(color: Colors.red)),
               ),
 
             Container(

@@ -46,6 +46,7 @@ class RaceServiceImpl implements RaceService {
       return race;
     } else {
       print("echec de la course : ${ response.body} et la status ${response.statusCode}");
+      debugPrint("echec de la course : ${ response.body} et la status ${response.statusCode}");
       throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
     }
   }
@@ -130,7 +131,7 @@ class RaceServiceImpl implements RaceService {
       );
 
     }
-
+    debugPrint("pro récupérer la route "+response.body);
     throw Exception("Impossible de récupérer la route");
   }
 

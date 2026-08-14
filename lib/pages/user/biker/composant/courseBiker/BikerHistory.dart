@@ -137,6 +137,19 @@ class BikerHistoryPage extends ConsumerWidget {
 
     final bool hasActiveRace = notifier.isRaceActive;
 
+    if (race.status == 'pending' && race.bikerId != null) {
+      return ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text("COURSE ACCEPTÉE · EN ATTENTE"),
+      );
+    }
+
     if (race.status == 'pending') {
       if (hasActiveRace) {
         return ElevatedButton(
@@ -157,8 +170,16 @@ class BikerHistoryPage extends ConsumerWidget {
       label = "ACCEPTER LA COURSE";
       color = Colors.green;
     } else if (race.status == 'ongoing') {
-      label = "TERMINER LA COURSE";
-      color = Colors.orange;
+      return ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text("COURSE EN COURS"),
+      );
     } else {
       return const SizedBox.shrink();
     }

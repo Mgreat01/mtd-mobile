@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/services/race/raceService.dart';
@@ -70,18 +72,26 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
       }).toList();
 
       state = state.copyWith(allRaces: updatedRaces, isLoading: false);
-      await ref
-          .read(bikerControllerProvider.notifier)
-          .applyRaceUpdate(updatedRace);
-      if (updatedRace.status == 'ongoing') {
-        ref.read(navigationIndexProvider.notifier).setIndex(0);
-      }
+      final bikerController = ref.read(bikerControllerProvider.notifier);
+      final navigationController = ref.read(
+        navigationIndexProvider.notifier,
+      );
+
+      // applyRaceUpdate enregistre la course active de façon synchrone avant
+      // de lancer l'appel d'itinéraire. On peut donc ouvrir la carte tout de
+      // suite, sans réutiliser le Ref de cette page après sa navigation.
+      unawaited(bikerController.applyRaceUpdate(updatedRace));
+      navigationController.setIndex(0);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: "Échec : $e");
     }
   }
 
   bool get isRaceActive {
-    return state.allRaces.any((race) => race.status == 'ongoing');
+    return state.allRaces.any(
+      (race) =>
+          race.status == 'ongoing' ||
+          (race.status == 'pending' && race.bikerId != null),
+    );
   }
 }

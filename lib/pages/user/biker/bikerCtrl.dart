@@ -18,7 +18,7 @@ class BikerController extends StateNotifier<BikerState> {
   Timer? _notifTimer;
   DateTime? _lastRouteRefreshAt;
   LatLng? _lastRouteRefreshPosition;
-  bool _isRefreshingRoute = false;
+  Future<void>? _routeLoadInProgress;
 
   List<AppNotification> _oldNotifications = [];
 
@@ -126,7 +126,12 @@ class BikerController extends StateNotifier<BikerState> {
 
   bool get isRaceActive {
     return state.activeRace != null ||
-        state.races.any((race) => race.status == 'ongoing');
+        state.races.any(_isAssignedActiveRace);
+  }
+
+  bool _isAssignedActiveRace(Race race) {
+    return race.status == 'ongoing' ||
+        (race.status == 'pending' && race.bikerId != null);
   }
 
   Future<void> applyRaceUpdate(Race race) async {
@@ -137,17 +142,36 @@ class BikerController extends StateNotifier<BikerState> {
     ];
 
     state = state.copyWith(races: races);
-    if (race.status == 'ongoing') {
+    if (_isAssignedActiveRace(race)) {
       state = state.copyWith(activeRace: race);
-      await _loadRouteToPassenger(race);
+      await _loadRouteToPassenger(race, waitForCurrent: true);
     } else if (state.activeRace?.id == race.id) {
       _clearActiveRoute();
     }
   }
 
-  Future<void> _loadRouteToPassenger(Race race) async {
-    if (_isRefreshingRoute) return;
-    _isRefreshingRoute = true;
+  Future<void> _loadRouteToPassenger(
+    Race race, {
+    bool waitForCurrent = false,
+  }) async {
+    final currentLoad = _routeLoadInProgress;
+    if (currentLoad != null) {
+      if (!waitForCurrent) return;
+      await currentLoad;
+    }
+
+    final routeLoad = _performRouteLoad(race);
+    _routeLoadInProgress = routeLoad;
+    try {
+      await routeLoad;
+    } finally {
+      if (identical(_routeLoadInProgress, routeLoad)) {
+        _routeLoadInProgress = null;
+      }
+    }
+  }
+
+  Future<void> _performRouteLoad(Race race) async {
     state = state.copyWith(clearRouteError: true, isRouteLoading: true);
     try {
       final route = await _bikerService.getBikerPassengerTrack(
@@ -176,14 +200,12 @@ class BikerController extends StateNotifier<BikerState> {
         routeError: "Impossible de charger l'itinéraire : $e",
         isRouteLoading: false,
       );
-    } finally {
-      _isRefreshingRoute = false;
     }
   }
 
   void _refreshActiveRouteIfNeeded(LatLng position) {
     final race = state.activeRace;
-    if (race == null || _isRefreshingRoute) return;
+    if (race == null || _routeLoadInProgress != null) return;
 
     final lastPosition = _lastRouteRefreshPosition;
     final lastRefresh = _lastRouteRefreshAt;
@@ -327,14 +349,22 @@ class BikerController extends StateNotifier<BikerState> {
       final results = await Future.wait([
         _bikerService.getBalance(),
         _bikerService.getCourses(),
+        _bikerService.getBikerRaces(),
         _bikerService.getPrices(),
       ]);
 
       final walletBalance = results[0].toString();
 
-      final List<Race> allRaces = results[1] as List<Race>;
+      final availableRaces = results[1] as List<Race>;
+      final bikerRaces = results[2] as List<Race>;
+      final racesById = <int, Race>{
+        for (final race in availableRaces) race.id: race,
+        for (final race in bikerRaces) race.id: race,
+      };
+      final allRaces = racesById.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      final List<dynamic> priceLists = results[2] as List<dynamic>;
+      final List<dynamic> priceLists = results[3] as List<dynamic>;
 
       final String today = DateTime.now().toIso8601String().split('T')[0];
 
@@ -369,7 +399,7 @@ class BikerController extends StateNotifier<BikerState> {
       );
 
       final activeRace = allRaces
-          .where((race) => race.status == 'ongoing')
+          .where(_isAssignedActiveRace)
           .firstOrNull;
       if (activeRace != null) {
         state = state.copyWith(activeRace: activeRace);
@@ -435,6 +465,6 @@ class BikerController extends StateNotifier<BikerState> {
 }
 
 final bikerControllerProvider =
-    StateNotifierProvider.autoDispose<BikerController, BikerState>((ref) {
+    StateNotifierProvider<BikerController, BikerState>((ref) {
       return BikerController(ref);
     });

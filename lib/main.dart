@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moto_taxi_digital_mobile/MyApplication.dart';
@@ -17,6 +16,7 @@ import 'package:moto_taxi_digital_mobile/framework/user/userLocalServiceImpl.dar
 import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 import 'package:moto_taxi_digital_mobile/utils/navigationUtils.dart';
+import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
@@ -61,9 +61,10 @@ void main() async{
   //chargement du fichier .env initialisation globale
   await AppConfig.initialize();
 
-  MapboxOptions.setAccessToken(
-    dotenv.env["MAPBOX_ACCESS_TOKEN"]!,
-  );
+  if (MapboxConfig.accessToken.isEmpty) {
+    throw StateError('MAPBOX_ACCESS_TOKEN est absent du fichier .env');
+  }
+  MapboxOptions.setAccessToken(MapboxConfig.accessToken);
 
   runApp(ProviderScope(child: MyApplication()));
 }

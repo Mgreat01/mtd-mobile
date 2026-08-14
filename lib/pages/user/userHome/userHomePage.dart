@@ -29,16 +29,15 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       await _polylineManager!.delete(_routePolyline!);
     }
 
+    final validCoordinates = coordinates
+        .where((coordinate) => coordinate.length >= 2)
+        .map((coordinate) => Position(coordinate[0], coordinate[1]))
+        .toList(growable: false);
+    if (validCoordinates.length < 2) return;
+
     final line = LineString(
 
-      coordinates: coordinates
-          .map(
-            (c) => Position(
-          c[0], // longitude
-          c[1], // latitude
-        ),
-      )
-          .toList(),
+      coordinates: validCoordinates,
     );
 
     _routePolyline = await _polylineManager!.create(
@@ -54,6 +53,19 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         lineOpacity: 0.9,
       ),
     );
+
+    final map = _mapboxMap;
+    if (map == null) return;
+    final camera = await map.cameraForCoordinatesPadding(
+      validCoordinates
+          .map((position) => Point(coordinates: position))
+          .toList(),
+      CameraOptions(bearing: 0, pitch: 0),
+      MbxEdgeInsets(top: 90, left: 45, bottom: 360, right: 45),
+      16,
+      null,
+    );
+    await map.flyTo(camera, MapAnimationOptions(duration: 900));
   }
   MapboxMap? _mapboxMap;
   final TextEditingController _searchController = TextEditingController();
@@ -107,12 +119,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       userHomeControllerProvider,
           (previous, next) async {
 
-        if (previous?.routeCoordinates != next.routeCoordinates &&
-            next.routeCoordinates.isNotEmpty) {
-
-          await _drawRoute(
-            next.routeCoordinates,
-          );
+        if (previous?.routeCoordinates != next.routeCoordinates) {
+          await _drawRoute(next.routeCoordinates);
         }
       },
     );
@@ -285,6 +293,9 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   state.pickupLocation.latitude,
                   state.pickupLocation.longitude,
                 );
+                if (state.routeCoordinates.isNotEmpty) {
+                  await _drawRoute(state.routeCoordinates);
+                }
               },
             )
           ),

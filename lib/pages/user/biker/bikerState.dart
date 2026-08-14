@@ -17,6 +17,7 @@ class BikerState {
   final double? routeDistanceKm;
   final double? routeDurationMin;
   final String? routeError;
+  final bool isRouteLoading;
 
   BikerState({
     this.isOnline = false,
@@ -33,6 +34,7 @@ class BikerState {
     this.routeDistanceKm,
     this.routeDurationMin,
     this.routeError,
+    this.isRouteLoading = false,
   });
 
   BikerState copyWith({
@@ -52,6 +54,7 @@ class BikerState {
     double? routeDurationMin,
     String? routeError,
     bool clearRouteError = false,
+    bool? isRouteLoading,
   }) {
     return BikerState(
       isOnline: isOnline ?? this.isOnline,
@@ -68,6 +71,7 @@ class BikerState {
       routeDistanceKm: routeDistanceKm ?? this.routeDistanceKm,
       routeDurationMin: routeDurationMin ?? this.routeDurationMin,
       routeError: clearRouteError ? null : routeError ?? this.routeError,
+      isRouteLoading: isRouteLoading ?? this.isRouteLoading,
     );
   }
 }

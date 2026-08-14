@@ -19,8 +19,10 @@ class _BikerPageState extends ConsumerState<BikerPage> {
   PolylineAnnotation? _routePolyline;
   PointAnnotationManager? _pointManager;
   PointAnnotation? _passengerMarker;
+  int _routeRenderVersion = 0;
 
   Future<void> _renderRoute(BikerState state) async {
+    final renderVersion = ++_routeRenderVersion;
     if (_polylineManager == null || _pointManager == null) return;
 
     if (_routePolyline != null) {
@@ -39,7 +41,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         .toList();
     if (coordinates.length < 2) return;
 
-    _routePolyline = await _polylineManager!.create(
+    final polyline = await _polylineManager!.create(
       PolylineAnnotationOptions(
         geometry: LineString(coordinates: coordinates),
         lineColor: 0xFF1565C0,
@@ -47,6 +49,11 @@ class _BikerPageState extends ConsumerState<BikerPage> {
         lineOpacity: 0.9,
       ),
     );
+    if (renderVersion != _routeRenderVersion) {
+      await _polylineManager!.delete(polyline);
+      return;
+    }
+    _routePolyline = polyline;
 
     final markerData = await rootBundle.load('assets/images/location.png');
     _passengerMarker = await _pointManager!.create(
@@ -57,9 +64,17 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       ),
     );
 
-    final middle = coordinates[coordinates.length ~/ 2];
-    await _mapboxMap?.flyTo(
-      CameraOptions(center: Point(coordinates: middle), zoom: 13),
+    final map = _mapboxMap;
+    if (map == null) return;
+    final camera = await map.cameraForCoordinatesPadding(
+      coordinates.map((position) => Point(coordinates: position)).toList(),
+      CameraOptions(bearing: 0, pitch: 0),
+      MbxEdgeInsets(top: 190, left: 50, bottom: 220, right: 50),
+      16,
+      null,
+    );
+    await map.flyTo(
+      camera,
       MapAnimationOptions(duration: 1000),
     );
   }
@@ -72,7 +87,8 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       previous,
       next,
     ) {
-      if (previous != next) {
+      if (previous != next &&
+          ref.read(bikerControllerProvider).routeCoordinates.isEmpty) {
         print("Move map => ${next.latitude}");
 
         _mapboxMap?.flyTo(
@@ -250,6 +266,10 @@ class _BikerPageState extends ConsumerState<BikerPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            ],
+            if (state.isRouteLoading) ...[
+              const SizedBox(height: 8),
+              const LinearProgressIndicator(),
             ],
             if (state.routeError != null) ...[
               const SizedBox(height: 8),

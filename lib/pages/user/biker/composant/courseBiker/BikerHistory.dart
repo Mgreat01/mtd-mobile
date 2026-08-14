@@ -74,7 +74,7 @@ class BikerHistoryPage extends ConsumerWidget {
       onRefresh: () => notifier.fetchRaces(),
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
         itemCount: races.isEmpty ? 1 : races.length,
         itemBuilder: (context, index) {
           if (races.isEmpty) {

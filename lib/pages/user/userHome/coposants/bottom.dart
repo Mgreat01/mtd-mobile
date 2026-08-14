@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
@@ -11,11 +12,34 @@ import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart';
 import 'package:moto_taxi_digital_mobile/utils/themes/appTheme.dart';
 
-class BottomNavBar extends ConsumerWidget {
+class BottomNavBar extends ConsumerStatefulWidget {
   const BottomNavBar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BottomNavBar> createState() => _BottomNavBarState();
+}
+
+class _BottomNavBarState extends ConsumerState<BottomNavBar> {
+  bool _isNavigationBarVisible = true;
+
+  bool _handleScroll(UserScrollNotification notification) {
+    if (notification.metrics.pixels <= 0) {
+      _setNavigationBarVisibility(true);
+    } else if (notification.direction == ScrollDirection.reverse) {
+      _setNavigationBarVisibility(false);
+    } else if (notification.direction == ScrollDirection.forward) {
+      _setNavigationBarVisibility(true);
+    }
+    return false;
+  }
+
+  void _setNavigationBarVisibility(bool visible) {
+    if (_isNavigationBarVisible == visible || !mounted) return;
+    setState(() => _isNavigationBarVisible = visible);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final index = ref.watch(navigationIndexProvider);
     final userRole = ref.watch(appCtrlProvider).user?.role ?? 'passenger';
     final theme = Theme.of(context);
@@ -53,35 +77,45 @@ class BottomNavBar extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: IndexedStack(
-        index: index,
-        children: pages,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppTheme.cardDark : Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isDarkMode ? Colors.black : Colors.grey).withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: _handleScroll,
+        child: IndexedStack(
+          index: index,
+          children: pages,
         ),
-        child: BottomAppBar(
-          shape: const CircularNotchedRectangle(),
-          color: Colors.transparent,
-          elevation: 0,
-          child: Container(
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: _buildNavItems(userRole, index, ref, isDarkMode),
+      ),
+      bottomNavigationBar: AnimatedSlide(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        offset: _isNavigationBarVisible ? Offset.zero : const Offset(0, 1.15),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppTheme.cardDark : Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isDarkMode ? Colors.black : Colors.grey).withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: BottomAppBar(
+            shape: const CircularNotchedRectangle(),
+            color: Colors.transparent,
+            elevation: 0,
+            child: SizedBox(
+              height: 70,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: _buildNavItems(userRole, index, ref, isDarkMode),
+                ),
+              ),
             ),
           ),
         ),

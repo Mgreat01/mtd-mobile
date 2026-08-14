@@ -16,6 +16,9 @@ class BikerController extends StateNotifier<BikerState> {
   StreamSubscription<ServiceStatus>? _gpsServiceSubscription;
 
   Timer? _notifTimer;
+  DateTime? _lastRouteRefreshAt;
+  LatLng? _lastRouteRefreshPosition;
+  bool _isRefreshingRoute = false;
 
   List<AppNotification> _oldNotifications = [];
 
@@ -143,7 +146,9 @@ class BikerController extends StateNotifier<BikerState> {
   }
 
   Future<void> _loadRouteToPassenger(Race race) async {
-    state = state.copyWith(clearRouteError: true);
+    if (_isRefreshingRoute) return;
+    _isRefreshingRoute = true;
+    state = state.copyWith(clearRouteError: true, isRouteLoading: true);
     try {
       final route = await _bikerService.getBikerPassengerTrack(
         raceId: race.id,
@@ -161,13 +166,43 @@ class BikerController extends StateNotifier<BikerState> {
         routeDistanceKm: route.route.distance / 1000,
         routeDurationMin: route.route.duration / 60,
         clearRouteError: true,
+        isRouteLoading: false,
       );
+      _lastRouteRefreshAt = DateTime.now();
+      _lastRouteRefreshPosition = state.currentPosition;
     } catch (e) {
       state = state.copyWith(
         activeRace: race,
-        routeCoordinates: const [],
         routeError: "Impossible de charger l'itinéraire : $e",
+        isRouteLoading: false,
       );
+    } finally {
+      _isRefreshingRoute = false;
+    }
+  }
+
+  void _refreshActiveRouteIfNeeded(LatLng position) {
+    final race = state.activeRace;
+    if (race == null || _isRefreshingRoute) return;
+
+    final lastPosition = _lastRouteRefreshPosition;
+    final lastRefresh = _lastRouteRefreshAt;
+    final movedMeters = lastPosition == null
+        ? double.infinity
+        : Geolocator.distanceBetween(
+            lastPosition.latitude,
+            lastPosition.longitude,
+            position.latitude,
+            position.longitude,
+          );
+    final elapsed = lastRefresh == null
+        ? const Duration(days: 1)
+        : DateTime.now().difference(lastRefresh);
+
+    // Recalculer seulement après un mouvement significatif. La limite de temps
+    // évite une rafale de requêtes Mapbox lorsque le GPS oscille sur place.
+    if (movedMeters >= 25 && elapsed >= const Duration(seconds: 15)) {
+      unawaited(_loadRouteToPassenger(race));
     }
   }
 
@@ -178,7 +213,10 @@ class BikerController extends StateNotifier<BikerState> {
       routeDistanceKm: 0,
       routeDurationMin: 0,
       clearRouteError: true,
+      isRouteLoading: false,
     );
+    _lastRouteRefreshAt = null;
+    _lastRouteRefreshPosition = null;
   }
 
   Future<bool> _handleLocationPermission() async {
@@ -245,6 +283,7 @@ class BikerController extends StateNotifier<BikerState> {
     final newPosition = LatLng(position.latitude, position.longitude);
 
     state = state.copyWith(currentPosition: newPosition);
+    _refreshActiveRouteIfNeeded(newPosition);
 
     print(
       "Nouvelle position : "

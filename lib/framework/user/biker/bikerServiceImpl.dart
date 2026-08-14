@@ -12,7 +12,7 @@ import '../../../utils/appConfig.dart';
 
 class BikerServiceImpl implements BikerService {
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token');
+  String get _token => GetStorage().read<String>('token') ?? '';
 
   Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',
@@ -39,7 +39,7 @@ class BikerServiceImpl implements BikerService {
   Future<void> deleteBiker(int id) async {
     await http.delete(
       Uri.parse('$baseUrl/api/bikers/$id'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
   }
 
@@ -47,7 +47,7 @@ class BikerServiceImpl implements BikerService {
   Future<List<Race>> getBikerRaces() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/races'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
 
     if (response.statusCode != 200) {
@@ -72,7 +72,7 @@ class BikerServiceImpl implements BikerService {
   Future<List<Biker>> getAvailableBikers() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/available'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
 
     final data = jsonDecode(response.body);
@@ -83,7 +83,7 @@ class BikerServiceImpl implements BikerService {
   Future<dynamic> getBalance() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/wallets/balance'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
     final data = jsonDecode(response.body);
     return (data['balance']);
@@ -93,7 +93,7 @@ class BikerServiceImpl implements BikerService {
   Future<List<Race>> getCourses() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/new-races'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
     if (response.statusCode != 200) {
       throw Exception(
@@ -117,7 +117,7 @@ class BikerServiceImpl implements BikerService {
   Future getPrices() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/price-lists'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
     final data = jsonDecode(response.body);
     print(data);
@@ -135,7 +135,7 @@ class BikerServiceImpl implements BikerService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/biker/update-location'),
-        headers: _headers(tokens),
+        headers: _headers(_token),
         body: jsonEncode({
           'latitude': lat,
           'longitude': lng,
@@ -155,7 +155,7 @@ class BikerServiceImpl implements BikerService {
   Future<List<BikerMarkerData>> getActiveBikers() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikers/active'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
 
     if (response.statusCode == 200) {
@@ -181,7 +181,7 @@ class BikerServiceImpl implements BikerService {
   Future<List<AppNotification>> getNotifications() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/biker/notifications'),
-      headers: _headers(tokens),
+      headers: _headers(_token),
     );
 
     if (response.statusCode == 200) {
@@ -199,7 +199,6 @@ class BikerServiceImpl implements BikerService {
           .toList();
     } else {
       debugPrint("Erreur notifications: ${response.body}");
-      print("TOKEN: $tokens");
       debugPrint("Status code: ${response.statusCode}");
       throw Exception("Erreur notifications");
     }
@@ -213,7 +212,7 @@ class BikerServiceImpl implements BikerService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/biker/bikerPassengerTrack'),
-        headers: _headers(tokens),
+        headers: _headers(_token),
         body: jsonEncode({
           'race_id': raceId,
           'latitude': lat,
@@ -229,13 +228,31 @@ class BikerServiceImpl implements BikerService {
             ? data['data'] as Map<String, dynamic>
             : data as Map<String, dynamic>;
         return RaceRouteModel.fromJson(routeData);
-      } else {
-        debugPrint("Erreur serveur: ${response.statusCode} - ${response.body}");
-        return null;
       }
+
+      final body = jsonDecode(response.body);
+      final message = body is Map<String, dynamic>
+          ? body['message'] ?? body['error']
+          : null;
+      throw BikerRouteException(
+        message?.toString() ?? 'Erreur itinéraire (${response.statusCode})',
+        response.statusCode,
+      );
+    } on FormatException catch (e) {
+      throw Exception('Réponse itinéraire invalide : ${e.message}');
     } catch (e) {
-      debugPrint("Erreur réseau getBikerPassengerTrack: $e");
-      return null;
+      debugPrint("Erreur getBikerPassengerTrack: $e");
+      rethrow;
     }
   }
+}
+
+class BikerRouteException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  const BikerRouteException(this.message, [this.statusCode]);
+
+  @override
+  String toString() => message;
 }

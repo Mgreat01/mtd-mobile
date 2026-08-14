@@ -57,17 +57,17 @@ class Race {
       date: json['date'] ?? '',
       startingPoint: json['starting_point'] ?? '',
       destination: json['destination'] ?? '',
-      startLat: json['start_lat'] != null
-          ? double.parse(json['start_lat'].toString())
+      startLat: (json['lat_start'] ?? json['start_lat']) != null
+          ? double.tryParse((json['lat_start'] ?? json['start_lat']).toString())
           : null,
-      startLng: json['start_lng'] != null
-          ? double.parse(json['start_lng'].toString())
+      startLng: (json['lng_start'] ?? json['start_lng']) != null
+          ? double.tryParse((json['lng_start'] ?? json['start_lng']).toString())
           : null,
-      endLat: json['end_lat'] != null
-          ? double.parse(json['end_lat'].toString())
+      endLat: (json['lat_end'] ?? json['end_lat']) != null
+          ? double.tryParse((json['lat_end'] ?? json['end_lat']).toString())
           : null,
-      endLng: json['end_lng'] != null
-          ? double.parse(json['end_lng'].toString())
+      endLng: (json['lng_end'] ?? json['end_lng']) != null
+          ? double.tryParse((json['lng_end'] ?? json['end_lng']).toString())
           : null,
 
       status: json['status'] ?? 'pending',
@@ -168,14 +168,28 @@ class Geometry {
   Geometry({required this.type, required this.coordinates});
 
   factory Geometry.fromJson(Map<String, dynamic> json) {
+    final rawCoordinates = json['coordinates'];
+    if (json['type'] != 'LineString' || rawCoordinates is! List) {
+      throw const FormatException("Géométrie d'itinéraire invalide");
+    }
+
+    final coordinates = rawCoordinates.map((coordinate) {
+      if (coordinate is! List || coordinate.length < 2) {
+        throw const FormatException("Coordonnée d'itinéraire invalide");
+      }
+      final longitude = double.tryParse(coordinate[0].toString());
+      final latitude = double.tryParse(coordinate[1].toString());
+      if (longitude == null || latitude == null ||
+          longitude < -180 || longitude > 180 ||
+          latitude < -90 || latitude > 90) {
+        throw const FormatException("Coordonnée Mapbox hors limites");
+      }
+      return <double>[longitude, latitude];
+    }).toList(growable: false);
+
     return Geometry(
-      type: json['type'],
-      coordinates: (json['coordinates'] as List)
-          .map(
-            (coord) =>
-                (coord as List).map((c) => (c as num).toDouble()).toList(),
-          )
-          .toList(),
+      type: json['type'].toString(),
+      coordinates: coordinates,
     );
   }
 

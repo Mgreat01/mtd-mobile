@@ -50,6 +50,32 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
         ? ref.watch(bikerControllerProvider)
         : null;
 
+    if (userRole == 'biker') {
+      ref.listen<int>(
+        bikerControllerProvider.select((state) => state.unreadCount),
+        (previous, next) {
+          if (previous == null || next <= previous || !mounted) return;
+          final notifications = ref.read(bikerControllerProvider).notifications;
+          final notification = notifications.isEmpty ? null : notifications.first;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(notification?.title ?? 'Nouvelle course disponible'),
+                backgroundColor: Colors.green,
+                action: SnackBarAction(
+                  label: 'VOIR',
+                  textColor: Colors.white,
+                  onPressed: () => _openNotifications(
+                    ref.read(bikerControllerProvider),
+                  ),
+                ),
+              ),
+            );
+        },
+      );
+    }
+
     var data = ref.watch(loginControllerProvider).user;
     print("La valeur de user : $data");
     print("le role de l'utilisateur : ${data?.role}");
@@ -166,6 +192,9 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     }
 
     await ref.read(bikerControllerProvider.notifier).fetchNotifications();
+    await ref
+        .read(bikerControllerProvider.notifier)
+        .markAllNotificationsAsRead();
     if (!mounted) return;
     final state = ref.read(bikerControllerProvider);
 

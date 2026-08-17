@@ -101,22 +101,6 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       }
     });
 
-    ref.listenManual(bikerControllerProvider, (prev, next) {
-      final prevCount = prev?.notifications.length ?? 0;
-      final nextCount = next.notifications.length;
-
-      if (prev != null && nextCount > prevCount) {
-        final newNotif = next.notifications.first;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(newNotif.title),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    });
-
     ref.listenManual(
       bikerControllerProvider.select((state) => state.routeCoordinates),
       (previous, next) {

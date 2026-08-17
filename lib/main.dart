@@ -19,6 +19,7 @@ import 'package:moto_taxi_digital_mobile/utils/navigationUtils.dart';
 import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotificationService.dart';
 
 GetIt getIt = GetIt.instance;
 
@@ -46,6 +47,9 @@ void configureImplementations() {
   );
 
   getIt.registerLazySingleton<NavigationUtils>(() => NavigationUtils());
+  getIt.registerLazySingleton<RealtimeNotificationService>(
+    () => RealtimeNotificationService(),
+  );
 }
 
 void main() async{

@@ -6,6 +6,7 @@ import 'package:moto_taxi_digital_mobile/business/models/notification/appNotific
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
+import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotificationService.dart';
 import 'bikerState.dart';
 
 class BikerController extends StateNotifier<BikerState> {
@@ -16,6 +17,7 @@ class BikerController extends StateNotifier<BikerState> {
   StreamSubscription<ServiceStatus>? _gpsServiceSubscription;
 
   Timer? _notifTimer;
+  StreamSubscription<Map<String, dynamic>>? _realtimeNotificationSubscription;
   DateTime? _lastRouteRefreshAt;
   LatLng? _lastRouteRefreshPosition;
   Future<void>? _routeLoadInProgress;
@@ -30,12 +32,16 @@ class BikerController extends StateNotifier<BikerState> {
     /// écoute si l'utilisateur active/désactive le GPS
     _listenLocationService();
 
+    // Les notifications ne doivent pas attendre le GPS ni les autres appels
+    // du tableau de bord pour apparaître.
+    await fetchNotifications();
+    await _initializeRealtimeNotifications();
+    _startNotificationPolling();
+
     /// tente de récupérer la position
     await _initializeLocation();
 
     await refreshData();
-
-    _startNotificationPolling();
   }
 
   /// =========================
@@ -418,9 +424,18 @@ class BikerController extends StateNotifier<BikerState> {
     _notifTimer?.cancel();
 
     _notifTimer = Timer.periodic(
-      const Duration(seconds: 10),
+      const Duration(minutes: 1),
       (_) => fetchNotifications(),
     );
+  }
+
+  Future<void> _initializeRealtimeNotifications() async {
+    final realtimeService = getIt.get<RealtimeNotificationService>();
+    _realtimeNotificationSubscription = realtimeService.notifications.listen((_) {
+      unawaited(fetchNotifications());
+      unawaited(refreshData());
+    });
+    await realtimeService.connect();
   }
 
   Future<void> fetchNotifications() async {
@@ -459,12 +474,13 @@ class BikerController extends StateNotifier<BikerState> {
     _gpsServiceSubscription?.cancel();
 
     _notifTimer?.cancel();
+    _realtimeNotificationSubscription?.cancel();
 
     super.dispose();
   }
 }
 
-final bikerControllerProvider =
-    StateNotifierProvider<BikerController, BikerState>((ref) {
+final bikerControllerProvider=
+    StateNotifierProvider.autoDispose<BikerController, BikerState>((ref) {
       return BikerController(ref);
     });

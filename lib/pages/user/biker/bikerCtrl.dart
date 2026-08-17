@@ -431,11 +431,30 @@ class BikerController extends StateNotifier<BikerState> {
 
   Future<void> _initializeRealtimeNotifications() async {
     final realtimeService = getIt.get<RealtimeNotificationService>();
-    _realtimeNotificationSubscription = realtimeService.notifications.listen((_) {
+    _realtimeNotificationSubscription = realtimeService.notifications.listen((payload) {
+      _applyRealtimeNotification(payload);
       unawaited(fetchNotifications());
       unawaited(refreshData());
     });
     await realtimeService.connect();
+  }
+
+  void _applyRealtimeNotification(Map<String, dynamic> payload) {
+    final id = int.tryParse(payload['id']?.toString() ?? '');
+    if (id == null || state.notifications.any((item) => item.id == id)) return;
+
+    final notification = AppNotification(
+      id: id,
+      title: payload['title']?.toString() ?? 'Nouvelle notification',
+      message: payload['message']?.toString() ?? '',
+      assignedAt: payload['created_at']?.toString(),
+    );
+    final notifications = [notification, ...state.notifications];
+    _oldNotifications = notifications;
+    state = state.copyWith(
+      notifications: notifications,
+      unreadCount: state.unreadCount + 1,
+    );
   }
 
   Future<void> fetchNotifications() async {

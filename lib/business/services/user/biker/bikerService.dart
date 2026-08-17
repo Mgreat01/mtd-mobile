@@ -24,4 +24,5 @@ abstract class BikerService {
   });
   Future<List<BikerMarkerData>> getActiveBikers();
   Future<List<AppNotification>> getNotifications();
+  Future<void> markAllNotificationsAsRead();
 }

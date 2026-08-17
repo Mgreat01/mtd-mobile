@@ -204,6 +204,19 @@ class BikerServiceImpl implements BikerService {
     }
   }
 
+  @override
+  Future<void> markAllNotificationsAsRead() async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/biker/notifications/read-all'),
+      headers: _headers(_token),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      debugPrint('Erreur lecture notifications: ${response.body}');
+      throw Exception('Impossible de marquer les notifications comme lues');
+    }
+  }
+
   Future<RaceRouteModel?> getBikerPassengerTrack({
     required int raceId,
     required double lat,

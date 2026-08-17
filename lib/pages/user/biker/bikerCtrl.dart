@@ -486,6 +486,28 @@ class BikerController extends StateNotifier<BikerState> {
     }
   }
 
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      await _bikerService.markAllNotificationsAsRead();
+      final readAt = DateTime.now().toUtc().toIso8601String();
+      final notifications = state.notifications
+          .map(
+            (notification) => AppNotification(
+              id: notification.id,
+              title: notification.title,
+              message: notification.message,
+              readAt: notification.readAt ?? readAt,
+              assignedAt: notification.assignedAt,
+            ),
+          )
+          .toList();
+      _oldNotifications = notifications;
+      state = state.copyWith(notifications: notifications, unreadCount: 0);
+    } catch (e) {
+      debugPrint('Erreur lecture des notifications: $e');
+    }
+  }
+
   @override
   void dispose() {
     _positionSubscription?.cancel();

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerCtrl.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerState.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/courseBiker/BikerHistory.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/wallet/walletPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerPage.dart';
@@ -44,6 +46,9 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     final userRole = ref.watch(appCtrlProvider).user?.role ?? 'passenger';
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final bikerState = userRole == 'biker'
+        ? ref.watch(bikerControllerProvider)
+        : null;
 
     var data = ref.watch(loginControllerProvider).user;
     print("La valeur de user : $data");
@@ -68,11 +73,40 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
         ),
         actions: [
-          _buildCircleAction(
-            icon: Icons.notifications_none,
-            theme: theme,
-            isDarkMode: isDarkMode,
-            onPressed: () {},
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _buildCircleAction(
+                icon: Icons.notifications_none,
+                theme: theme,
+                isDarkMode: isDarkMode,
+                onPressed: () => _openNotifications(bikerState),
+              ),
+              if ((bikerState?.unreadCount ?? 0) > 0)
+                Positioned(
+                  right: 4,
+                  top: 3,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      bikerState!.unreadCount > 99
+                          ? '99+'
+                          : '${bikerState.unreadCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -118,6 +152,52 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openNotifications(BikerState? currentState) async {
+    if (currentState == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucune notification disponible.')),
+      );
+      return;
+    }
+
+    await ref.read(bikerControllerProvider.notifier).fetchNotifications();
+    if (!mounted) return;
+    final state = ref.read(bikerControllerProvider);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.65,
+          child: state.notifications.isEmpty
+              ? const Center(child: Text('Aucune notification.'))
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  itemCount: state.notifications.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, index) {
+                    final notification = state.notifications[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Icon(
+                          notification.isRead
+                              ? Icons.notifications_none
+                              : Icons.notifications_active,
+                        ),
+                      ),
+                      title: Text(notification.title),
+                      subtitle: Text(notification.message),
+                      isThreeLine: true,
+                    );
+                  },
+                ),
         ),
       ),
     );

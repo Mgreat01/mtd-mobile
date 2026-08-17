@@ -105,7 +105,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       final prevCount = prev?.notifications.length ?? 0;
       final nextCount = next.notifications.length;
 
-      if (nextCount > prevCount) {
+      if (prev != null && nextCount > prevCount) {
         final newNotif = next.notifications.first;
 
         ScaffoldMessenger.of(context).showSnackBar(

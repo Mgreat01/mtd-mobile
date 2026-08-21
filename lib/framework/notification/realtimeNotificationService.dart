@@ -26,7 +26,8 @@ class RealtimeNotificationService {
     _connecting = true;
     try {
       final base = Uri.parse(AppConfig.realtimeWsUrl);
-      final path = '${base.path.replaceFirst(RegExp(r'/+$'), '')}'
+      final path =
+          '${base.path.replaceFirst(RegExp(r'/+$'), '')}'
           '/app/${AppConfig.reverbAppKey}';
       final uri = base.replace(
         path: path,
@@ -66,7 +67,7 @@ class RealtimeNotificationService {
 
   Future<void> _handleMessage(String raw, int userId, String token) async {
     final envelope = jsonDecode(raw) as Map<String, dynamic>;
-    final event = envelope['event']?.toString();
+    final event = _normalizeEventName(envelope['event']?.toString());
 
     if (event == 'pusher:connection_established') {
       final connectionData = _decodeData(envelope['data']);
@@ -82,31 +83,62 @@ class RealtimeNotificationService {
       return;
     }
 
-    if (event == 'notification.created') {
-      debugPrint('Notification temps réel reçue: ${envelope['data']}');
-      _notifications.add(_decodeData(envelope['data']));
+    if (event == 'notification.created' ||
+        event == 'race.accepted' ||
+        event == 'race.confirmed') {
+      debugPrint('Événement temps réel reçu ($event): ${envelope['data']}');
+      _notifications.add({..._decodeData(envelope['data']), '_event': event});
+    }
+  }
+
+  String? _normalizeEventName(String? event) {
+    if (event == null || event.isEmpty) return event;
+    if (event == 'race.accepted' ||
+        event == 'race.confirmed' ||
+        event == 'notification.created') {
+      return event;
+    }
+
+    // Laravel peut envoyer le nom public, le nom de classe complet ou le nom
+    // d'alias configure dans broadcastAs().
+    final shortName = event.split('\\').last.split('.').last;
+    switch (shortName) {
+      case 'BikerAcceptedRace':
+      case 'race.accepted':
+        return 'race.accepted';
+      case 'PassengerConfirmedRace':
+      case 'race.confirmed':
+        return 'race.confirmed';
+      case 'NotificationCreated':
+      case 'notification.created':
+        return 'notification.created';
+      default:
+        return event;
     }
   }
 
   Future<void> _subscribe(int userId, String token, String socketId) async {
-    final channel = 'private-biker.$userId';
+    final channel = _currentUserRole() == 'passenger'
+        ? 'private-user.$userId'
+        : 'private-biker.$userId';
     final response = await http.post(
       Uri.parse('${AppConfig.apiUrl}/broadcasting/auth'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
       body: {'socket_id': socketId, 'channel_name': channel},
     );
     if (response.statusCode != 200) {
-      throw HttpException('Authentification Reverb refusée (${response.statusCode})');
+      throw HttpException(
+        'Authentification Reverb refusée (${response.statusCode})',
+      );
     }
 
     final auth = jsonDecode(response.body) as Map<String, dynamic>;
-    _socket?.add(jsonEncode({
-      'event': 'pusher:subscribe',
-      'data': {'channel': channel, 'auth': auth['auth']},
-    }));
+    _socket?.add(
+      jsonEncode({
+        'event': 'pusher:subscribe',
+        'data': {'channel': channel, 'auth': auth['auth']},
+      }),
+    );
     debugPrint('Abonnement Reverb actif: $channel');
   }
 
@@ -124,6 +156,13 @@ class RealtimeNotificationService {
     if (storedUser is String) storedUser = jsonDecode(storedUser);
     if (storedUser is! Map) return null;
     return int.tryParse(storedUser['id']?.toString() ?? '');
+  }
+
+  String? _currentUserRole() {
+    dynamic storedUser = GetStorage().read('user');
+    if (storedUser is String) storedUser = jsonDecode(storedUser);
+    if (storedUser is! Map) return null;
+    return storedUser['role']?.toString();
   }
 
   void _scheduleReconnect() {

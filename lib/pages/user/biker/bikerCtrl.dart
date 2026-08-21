@@ -132,8 +132,7 @@ class BikerController extends StateNotifier<BikerState> {
   }
 
   bool get isRaceActive {
-    return state.activeRace != null ||
-        state.races.any(_isAssignedActiveRace);
+    return state.activeRace != null || state.races.any(_isAssignedActiveRace);
   }
 
   bool _isAssignedActiveRace(Race race) {
@@ -405,9 +404,7 @@ class BikerController extends StateNotifier<BikerState> {
         isLoading: false,
       );
 
-      final activeRace = allRaces
-          .where(_isAssignedActiveRace)
-          .firstOrNull;
+      final activeRace = allRaces.where(_isAssignedActiveRace).firstOrNull;
       if (activeRace != null) {
         state = state.copyWith(activeRace: activeRace);
         await _loadRouteToPassenger(activeRace);
@@ -432,12 +429,47 @@ class BikerController extends StateNotifier<BikerState> {
 
   Future<void> _initializeRealtimeNotifications() async {
     final realtimeService = getIt.get<RealtimeNotificationService>();
-    _realtimeNotificationSubscription = realtimeService.notifications.listen((payload) {
+    _realtimeNotificationSubscription = realtimeService.notifications.listen((
+      payload,
+    ) {
+      if (payload['_event'] == 'race.confirmed') {
+        _applyConfirmedRace(payload);
+        return;
+      }
       _applyRealtimeNotification(payload);
       unawaited(fetchNotifications());
       unawaited(refreshData());
     });
     await realtimeService.connect();
+  }
+
+  void _applyConfirmedRace(Map<String, dynamic> payload) {
+    final raceJson = payload['race'];
+    final routeJson = payload['route'];
+    if (raceJson is! Map || routeJson is! Map) return;
+    try {
+      final race = Race.fromJson(Map<String, dynamic>.from(raceJson));
+      final route = RaceRouteModel.fromJson({
+        'race_id': race.id,
+        'route': Map<String, dynamic>.from(routeJson),
+      });
+      final races = [
+        for (final existing in state.races)
+          if (existing.id == race.id) race else existing,
+      ];
+      state = state.copyWith(
+        races: races,
+        activeRace: race,
+        routeCoordinates: route.route.geometry.coordinates,
+        routeDistanceKm: route.route.distance / 1000,
+        routeDurationMin: route.route.duration / 60,
+        clearRouteError: true,
+        isRouteLoading: false,
+      );
+    } catch (error) {
+      debugPrint('Mise à jour de la course confirmée invalide: $error');
+      unawaited(refreshData());
+    }
   }
 
   void _applyRealtimeNotification(Map<String, dynamic> payload) {
@@ -522,7 +554,7 @@ class BikerController extends StateNotifier<BikerState> {
   }
 }
 
-final bikerControllerProvider=
+final bikerControllerProvider =
     StateNotifierProvider.autoDispose<BikerController, BikerState>((ref) {
       return BikerController(ref);
     });

@@ -16,9 +16,10 @@ import 'package:moto_taxi_digital_mobile/framework/user/biker/bikerServiceImpl.d
 import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.dart';
 
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
+import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotificationService.dart';
+import 'package:moto_taxi_digital_mobile/main.dart';
 
 class UserHomeController extends StateNotifier<UserHomeState> {
-
   final RaceService _raceService;
   final BikerService _bikerService;
   final UserNetworkServiceImpl _networkService;
@@ -28,22 +29,22 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   Timer? _mapDebounce;
 
   StreamSubscription<ServiceStatus>? _gpsServiceSubscription;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
 
   UserHomeController(
-      this._raceService,
-      this._bikerService,
-      this._networkService,
-      ) : super(
-    UserHomeState(
-      pickupLocation: const LatLng(-4.322447, 15.307045),
-      mapCenter: const LatLng(-4.322447, 15.307045),
-    ),
-  ) {
+    this._raceService,
+    this._bikerService,
+    this._networkService,
+  ) : super(
+        UserHomeState(
+          pickupLocation: const LatLng(-4.322447, 15.307045),
+          mapCenter: const LatLng(-4.322447, 15.307045),
+        ),
+      ) {
     _init();
   }
 
   Future<void> _init() async {
-
     _listenToGpsChanges();
 
     await _loadLastKnownLocation();
@@ -53,42 +54,44 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     // await refreshBikers();
 
     _startRefreshTimer();
+    await _listenToRealtimeEvents();
+  }
+
+  Future<void> _listenToRealtimeEvents() async {
+    final realtime = getIt.get<RealtimeNotificationService>();
+    _realtimeSubscription = realtime.notifications.listen((payload) {
+      if (payload['_event'] != 'race.accepted') return;
+      final race = payload['race'];
+      if (race is Map &&
+          state.currentRace?.id.toString() == race['id']?.toString()) {
+        state = state.copyWith(bikerAcceptance: payload);
+      }
+    });
+    await realtime.connect();
   }
 
   void _listenToGpsChanges() {
-
     _gpsServiceSubscription?.cancel();
 
-    _gpsServiceSubscription =
-        Geolocator.getServiceStatusStream().listen(
+    _gpsServiceSubscription = Geolocator.getServiceStatusStream().listen((
+      ServiceStatus status,
+    ) async {
+      print("GPS STATUS => $status");
 
-              (ServiceStatus status) async {
+      if (status == ServiceStatus.enabled) {
+        print("GPS activé");
 
-            print("GPS STATUS => $status");
-
-            if (status == ServiceStatus.enabled) {
-
-              print("GPS activé");
-
-              await _getUserCurrentLocation();
-            }
-          },
-        );
+        await _getUserCurrentLocation();
+      }
+    });
   }
 
   Future<void> _loadLastKnownLocation() async {
-
     try {
-
-      Position? lastKnown =
-      await Geolocator.getLastKnownPosition();
+      Position? lastKnown = await Geolocator.getLastKnownPosition();
 
       if (lastKnown != null) {
-
-        final currentLatLng = LatLng(
-          lastKnown.latitude,
-          lastKnown.longitude,
-        );
+        final currentLatLng = LatLng(lastKnown.latitude, lastKnown.longitude);
 
         state = state.copyWith(
           pickupLocation: currentLatLng,
@@ -96,46 +99,34 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         );
 
         print(
-            "LAST KNOWN POSITION => "
-                "${lastKnown.latitude}, ${lastKnown.longitude}"
+          "LAST KNOWN POSITION => "
+          "${lastKnown.latitude}, ${lastKnown.longitude}",
         );
 
         await updateCurrentAddress();
       }
-
     } catch (e) {
-
       print("Erreur LastKnownPosition : $e");
     }
   }
 
   Future<void> _getUserCurrentLocation() async {
-
-    bool hasPermission =
-    await _handleLocationPermission();
+    bool hasPermission = await _handleLocationPermission();
 
     if (!hasPermission) return;
 
     try {
-
-      Position position =
-      await Geolocator.getCurrentPosition(
-
+      Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
 
-        timeLimit: const Duration(
-          seconds: 10,
-        ),
+        timeLimit: const Duration(seconds: 10),
       );
 
-      final currentLatLng = LatLng(
-        position.latitude,
-        position.longitude,
-      );
+      final currentLatLng = LatLng(position.latitude, position.longitude);
 
       print(
-          "GPS POSITION => "
-              "${position.latitude}, ${position.longitude}"
+        "GPS POSITION => "
+        "${position.latitude}, ${position.longitude}",
       );
 
       state = state.copyWith(
@@ -143,21 +134,15 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         mapCenter: currentLatLng,
       );
       await updateCurrentAddress();
-
     } catch (e) {
-
       print("Erreur GPS : $e");
     }
   }
 
-
   Future<bool> _handleLocationPermission() async {
-
-    bool serviceEnabled =
-    await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-
       print("Le service de localisation est désactivé");
 
       await Geolocator.openLocationSettings();
@@ -165,13 +150,10 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       return false;
     }
 
-    LocationPermission permission =
-    await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
-
-      permission =
-      await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
 
       if (permission == LocationPermission.denied) {
         print("Permission localisation refusée");
@@ -179,9 +161,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       }
     }
 
-    if (permission ==
-        LocationPermission.deniedForever) {
-
+    if (permission == LocationPermission.deniedForever) {
       print("Permission refusée définitivement");
 
       await Geolocator.openAppSettings();
@@ -197,7 +177,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 15),
-          (_) => refreshBikers(),
+      (_) => refreshBikers(),
     );
   }
 
@@ -208,19 +188,16 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     _mapDebounce?.cancel();
 
     _gpsServiceSubscription?.cancel();
+    _realtimeSubscription?.cancel();
 
     super.dispose();
   }
 
   Future<void> refreshBikers() async {
     try {
+      final bikers = await _bikerService.getActiveBikers();
 
-      final bikers =
-      await _bikerService.getActiveBikers();
-
-      state = state.copyWith(
-        nearbyBikers: bikers,
-      );
+      state = state.copyWith(nearbyBikers: bikers);
     } catch (e) {
       print("Erreur refreshBikers: $e");
     }
@@ -228,97 +205,65 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 
   Future<void> updateCurrentAddress() async {
     try {
-
-      final address =
-      await _networkService.getAddressFromLatLng(
-
+      final address = await _networkService.getAddressFromLatLng(
         state.pickupLocation.latitude,
         state.pickupLocation.longitude,
       );
 
-      state = state.copyWith(
-        currentAddress: address,
-      );
+      state = state.copyWith(currentAddress: address);
     } catch (e) {
       print("Erreur adresse départ: $e");
     }
   }
 
   void selectBiker(BikerMarkerData biker) {
-    state = state.copyWith(
-      selectedBiker: biker,
-    );
+    state = state.copyWith(selectedBiker: biker);
   }
 
   void updateLocationFromMap(LatLng newCenter) {
-    state = state.copyWith(
-      destinationLocation: newCenter,
-    );
+    state = state.copyWith(destinationLocation: newCenter);
 
     _mapDebounce?.cancel();
 
-    _mapDebounce = Timer(
-      const Duration(milliseconds: 700),
-          () async {
-        try {
+    _mapDebounce = Timer(const Duration(milliseconds: 700), () async {
+      try {
+        final address = await _networkService.getAddressFromLatLng(
+          newCenter.latitude,
+          newCenter.longitude,
+        );
 
-          final address =
-          await _networkService.getAddressFromLatLng(
-
-            newCenter.latitude,
-            newCenter.longitude,
-          );
-
-          state = state.copyWith(
-            destinationAddress: address,
-            destinationLocation: newCenter,
-          );
-        } catch (e) {
-          print("Erreur map destination: $e");
-        }
-      },
-    );
+        state = state.copyWith(
+          destinationAddress: address,
+          destinationLocation: newCenter,
+        );
+      } catch (e) {
+        print("Erreur map destination: $e");
+      }
+    });
   }
 
   Future<void> searchAddresses(String query) async {
-
     _searchDebounce?.cancel();
 
-    _searchDebounce = Timer(
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.trim().length < 3) {
+        state = state.copyWith(searchResults: []);
 
-      const Duration(milliseconds: 500),
+        return;
+      }
 
-          () async {
+      try {
+        final results = await _networkService.searchAddresses(
+          query,
 
-        if (query.trim().length < 3) {
+          userLocation: state.pickupLocation,
+        );
 
-          state = state.copyWith(
-            searchResults: [],
-          );
-
-          return;
-        }
-
-        try {
-
-          final results =
-          await _networkService.searchAddresses(
-
-            query,
-
-            userLocation: state.pickupLocation,
-          );
-
-          state = state.copyWith(
-            searchResults: results,
-          );
-
-        } catch (e) {
-
-          print("Erreur recherche: $e");
-        }
-      },
-    );
+        state = state.copyWith(searchResults: results);
+      } catch (e) {
+        print("Erreur recherche: $e");
+      }
+    });
   }
 
   void selectSearchResult(SearchResult result) {
@@ -342,14 +287,11 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     required String destinationName,
     required int priceListId,
   }) async {
-    if (state.destinationLocation == null ||
-        state.destinationAddress == null) {
+    if (state.destinationLocation == null || state.destinationAddress == null) {
       return;
     }
 
-    state = state.copyWith(
-      isLoading: true,
-    );
+    state = state.copyWith(isLoading: true);
 
     try {
       final newRace = Race(
@@ -358,7 +300,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         date: DateTime.now().toIso8601String(),
 
         startingPoint:
-        state.currentAddress ??
+            state.currentAddress ??
             "${state.pickupLocation.latitude},"
                 "${state.pickupLocation.longitude}",
 
@@ -379,18 +321,12 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         updatedAt: DateTime.now(),
       );
 
-      final createdRace =
-      await _raceService.createRace(newRace);
+      final createdRace = await _raceService.createRace(newRace);
 
-      final route =
-      await _raceService.getRaceRoute(
-        createdRace.id,
-      );
-      final distance =
-          route.route.distance / 1000;
+      final route = await _raceService.getRaceRoute(createdRace.id);
+      final distance = route.route.distance / 1000;
 
-      final duration =
-          route.route.duration / 60;
+      final duration = route.route.duration / 60;
 
       state = state.copyWith(
         currentRace: createdRace,
@@ -412,10 +348,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     if (state.currentRace == null) return;
 
     try {
-
-      await _raceService.deletedRace(
-        state.currentRace!.id,
-      );
+      await _raceService.deletedRace(state.currentRace!.id);
 
       state = state.copyWith(
         currentRace: null,
@@ -425,6 +358,34 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     } catch (e) {
       print("Erreur annulation: $e");
     }
+  }
+
+  Future<void> confirmAcceptedBiker() async {
+    final race = state.currentRace;
+    if (race == null) return;
+    state = state.copyWith(isLoading: true, clearBikerAcceptance: true);
+    try {
+      final route = await _raceService.confirmPassenger(race.id);
+      final updatedRace = await _raceService.getRaceById(race.id);
+      state = state.copyWith(
+        currentRace: updatedRace,
+        currentRoute: route,
+        routeCoordinates: route.route.geometry.coordinates,
+        routeDistanceKm: route.route.distance / 1000,
+        routeDurationMin: route.route.duration / 60,
+        step: UserStep.inRace,
+        isLoading: false,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: error.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  void dismissBikerAcceptance() {
+    state = state.copyWith(clearBikerAcceptance: true);
   }
 
   // Future<void> previewRoute() async {
@@ -456,12 +417,10 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 }
 
 final userHomeControllerProvider =
-StateNotifierProvider.autoDispose<
-    UserHomeController,
-    UserHomeState>(
+    StateNotifierProvider.autoDispose<UserHomeController, UserHomeState>(
       (ref) => UserHomeController(
-    RaceServiceImpl(),
-    BikerServiceImpl(),
-    UserNetworkServiceImpl(),
-  ),
-);
+        RaceServiceImpl(),
+        BikerServiceImpl(),
+        UserNetworkServiceImpl(),
+      ),
+    );

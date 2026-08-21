@@ -10,7 +10,6 @@ class BikerMarkerData {
   final String name;
   final Race? currentRace;
 
-
   const BikerMarkerData({
     required this.id,
     required this.position,
@@ -19,12 +18,7 @@ class BikerMarkerData {
   });
 }
 
-enum UserStep {
-  searching,
-  confirming,
-  waitingForBiker,
-  inRace,
-}
+enum UserStep { searching, confirming, waitingForBiker, inRace }
 
 class UserHomeState {
   final LatLng pickupLocation;
@@ -52,6 +46,7 @@ class UserHomeState {
   final double? routeDistanceKm;
   final double? routeDurationMin;
   final String? errorMessage;
+  final Map<String, dynamic>? bikerAcceptance;
 
   const UserHomeState({
     required this.pickupLocation,
@@ -76,6 +71,7 @@ class UserHomeState {
     this.routeDistanceKm,
     this.routeDurationMin,
     this.errorMessage,
+    this.bikerAcceptance,
   });
 
   UserHomeState copyWith({
@@ -100,6 +96,8 @@ class UserHomeState {
     double? routeDistanceKm,
     double? routeDurationMin,
     String? errorMessage,
+    Map<String, dynamic>? bikerAcceptance,
+    bool clearBikerAcceptance = false,
   }) {
     return UserHomeState(
       pickupLocation: pickupLocation ?? this.pickupLocation,
@@ -112,22 +110,21 @@ class UserHomeState {
       isLoading: isLoading ?? this.isLoading,
       searchResults: searchResults ?? this.searchResults,
 
-
       nearbyBikers: nearbyBikers ?? this.nearbyBikers,
       selectedBiker: selectedBiker ?? this.selectedBiker,
       currentRoute: currentRoute ?? this.currentRoute,
 
-      routeCoordinates:
-      routeCoordinates ?? this.routeCoordinates,
+      routeCoordinates: routeCoordinates ?? this.routeCoordinates,
 
       currentRace: currentRace ?? this.currentRace,
       step: step ?? this.step,
-      routeDistanceKm:
-      routeDistanceKm ?? this.routeDistanceKm,
+      routeDistanceKm: routeDistanceKm ?? this.routeDistanceKm,
 
-      routeDurationMin:
-      routeDurationMin ?? this.routeDurationMin,
+      routeDurationMin: routeDurationMin ?? this.routeDurationMin,
       errorMessage: errorMessage ?? this.errorMessage,
+      bikerAcceptance: clearBikerAcceptance
+          ? null
+          : bikerAcceptance ?? this.bikerAcceptance,
     );
   }
 

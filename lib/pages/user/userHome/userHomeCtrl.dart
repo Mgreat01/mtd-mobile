@@ -45,6 +45,10 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   }
 
   Future<void> _init() async {
+    // L'abonnement doit être prêt avant le GPS et le géocodage, afin de ne
+    // jamais manquer l'acceptation d'une course.
+    await _listenToRealtimeEvents();
+
     _listenToGpsChanges();
 
     await _loadLastKnownLocation();
@@ -54,7 +58,6 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     // await refreshBikers();
 
     _startRefreshTimer();
-    await _listenToRealtimeEvents();
   }
 
   Future<void> _listenToRealtimeEvents() async {
@@ -62,9 +65,22 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     _realtimeSubscription = realtime.notifications.listen((payload) {
       if (payload['_event'] != 'race.accepted') return;
       final race = payload['race'];
-      if (race is Map &&
-          state.currentRace?.id.toString() == race['id']?.toString()) {
-        state = state.copyWith(bikerAcceptance: payload);
+      if (race is! Map) {
+        debugPrint('Acceptation temps réel ignorée : course absente.');
+        return;
+      }
+
+      try {
+        final acceptedRace = Race.fromJson(Map<String, dynamic>.from(race));
+        // Le canal privé garantit que la course appartient au passager. Cette
+        // mise à jour couvre le cas où l'application a été rouverte sans état.
+        state = state.copyWith(
+          currentRace: acceptedRace,
+          step: UserStep.waitingForBiker,
+          bikerAcceptance: payload,
+        );
+      } catch (error) {
+        debugPrint('Acceptation temps réel invalide : $error');
       }
     });
     await realtime.connect();

@@ -18,10 +18,19 @@ class RealtimeNotificationService {
   Stream<Map<String, dynamic>> get notifications => _notifications.stream;
 
   Future<void> connect() async {
-    if (_disposed || _connecting || !AppConfig.isRealtimeConfigured) return;
+    if (_disposed || _connecting) return;
+    if (!AppConfig.isRealtimeConfigured) {
+      debugPrint(
+        'Temps réel désactivé : REALTIME_WS_URL ou REVERB_APP_KEY absent.',
+      );
+      return;
+    }
     final userId = _currentUserId();
     final token = GetStorage().read<String>('token');
-    if (userId == null || token == null || token.isEmpty) return;
+    if (userId == null || token == null || token.isEmpty) {
+      debugPrint('Temps réel non connecté : utilisateur ou jeton absent.');
+      return;
+    }
 
     _connecting = true;
     try {
@@ -118,9 +127,11 @@ class RealtimeNotificationService {
   }
 
   Future<void> _subscribe(int userId, String token, String socketId) async {
-    final channel = _currentUserRole() == 'passenger'
+    final role = _currentUserRole();
+    final channel = role == 'passenger'
         ? 'private-user.$userId'
         : 'private-biker.$userId';
+    debugPrint('Authentification Reverb du rôle $role sur $channel');
     final response = await http.post(
       Uri.parse('${AppConfig.apiUrl}/broadcasting/auth'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},

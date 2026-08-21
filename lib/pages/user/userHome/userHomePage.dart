@@ -19,10 +19,10 @@ class UserHomePage extends ConsumerStatefulWidget {
 }
 
 class _UserHomePageState extends ConsumerState<UserHomePage> {
+  bool _acceptanceDialogVisible = false;
   PolylineAnnotationManager? _polylineManager;
   PolylineAnnotation? _routePolyline;
   Future<void> _drawRoute(List<List<double>> coordinates) async {
-
     if (_polylineManager == null) return;
 
     if (_routePolyline != null) {
@@ -35,15 +35,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         .toList(growable: false);
     if (validCoordinates.length < 2) return;
 
-    final line = LineString(
-
-      coordinates: validCoordinates,
-    );
+    final line = LineString(coordinates: validCoordinates);
 
     _routePolyline = await _polylineManager!.create(
-
       PolylineAnnotationOptions(
-
         geometry: line,
 
         lineColor: 0xFF1E88E5,
@@ -57,9 +52,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     final map = _mapboxMap;
     if (map == null) return;
     final camera = await map.cameraForCoordinatesPadding(
-      validCoordinates
-          .map((position) => Point(coordinates: position))
-          .toList(),
+      validCoordinates.map((position) => Point(coordinates: position)).toList(),
       CameraOptions(bearing: 0, pitch: 0),
       MbxEdgeInsets(top: 90, left: 45, bottom: 360, right: 45),
       16,
@@ -67,6 +60,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     );
     await map.flyTo(camera, MapAnimationOptions(duration: 900));
   }
+
   MapboxMap? _mapboxMap;
   final TextEditingController _searchController = TextEditingController();
   PointAnnotationManager? _pointManager;
@@ -83,69 +77,101 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.listenManual<UserHomeState>(userHomeControllerProvider, (
+        previous,
+        next,
+      ) {
+        if (previous?.pickupLocation != next.pickupLocation) {
+          print(
+            "Nouvelle position reçue : "
+            "${next.pickupLocation.latitude}",
+          );
 
-      ref.listenManual<UserHomeState>(
-        userHomeControllerProvider,
-            (previous, next) {
-              if (previous?.pickupLocation != next.pickupLocation) {
+          _showUserMarker(
+            next.pickupLocation.latitude,
+            next.pickupLocation.longitude,
+          );
 
-                print(
-                  "Nouvelle position reçue : "
-                      "${next.pickupLocation.latitude}",
-                );
-
-                _showUserMarker(
-                  next.pickupLocation.latitude,
+          _mapboxMap?.flyTo(
+            CameraOptions(
+              center: Point(
+                coordinates: Position(
                   next.pickupLocation.longitude,
-                );
-
-                _mapboxMap?.flyTo(
-                  CameraOptions(
-                    center: Point(
-                      coordinates: Position(
-                        next.pickupLocation.longitude,
-                        next.pickupLocation.latitude,
-                      ),
-                    ),
-                    zoom: 15,
-                  ),
-                  MapAnimationOptions(duration: 1000),
-                );
-              }
-        },
-      );
+                  next.pickupLocation.latitude,
+                ),
+              ),
+              zoom: 15,
+            ),
+            MapAnimationOptions(duration: 1000),
+          );
+        }
+      });
     });
-    ref.listenManual<UserHomeState>(
-      userHomeControllerProvider,
-          (previous, next) async {
-
-        if (previous?.routeCoordinates != next.routeCoordinates) {
-          await _drawRoute(next.routeCoordinates);
+    ref.listenManual<UserHomeState>(userHomeControllerProvider, (
+      previous,
+      next,
+    ) async {
+      if (previous?.routeCoordinates != next.routeCoordinates) {
+        await _drawRoute(next.routeCoordinates);
+      }
+    });
+    ref.listenManual<Map<String, dynamic>?>(
+      userHomeControllerProvider.select((state) => state.bikerAcceptance),
+      (previous, next) {
+        if (next != null && !_acceptanceDialogVisible) {
+          _showBikerAcceptanceDialog(next);
         }
       },
     );
   }
 
+  Future<void> _showBikerAcceptanceDialog(Map<String, dynamic> payload) async {
+    _acceptanceDialogVisible = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.two_wheeler, size: 42),
+        title: const Text('Biker trouvé'),
+        content: Text(
+          payload['message']?.toString() ??
+              'Un biker a accepté votre course, voulez-vous continuer ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('PAS MAINTENANT'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('CONTINUER'),
+          ),
+        ],
+      ),
+    );
+    _acceptanceDialogVisible = false;
+    if (!mounted) return;
+    final notifier = ref.read(userHomeControllerProvider.notifier);
+    if (confirmed == true) {
+      await notifier.confirmAcceptedBiker();
+    } else {
+      notifier.dismissBikerAcceptance();
+    }
+  }
+
   Future<Uint8List> _loadDestinationMarker() async {
-    final data = await rootBundle.load(
-      'assets/images/locations.png',
-    );
+    final data = await rootBundle.load('assets/images/locations.png');
 
     return data.buffer.asUint8List();
   }
+
   Future<Uint8List> _loadUserMarker() async {
-    final data = await rootBundle.load(
-      'assets/images/arrival.png',
-    );
+    final data = await rootBundle.load('assets/images/arrival.png');
 
     return data.buffer.asUint8List();
   }
 
-  Future<void> _showDestinationMarker(
-      double latitude,
-      double longitude,
-      ) async {
-
+  Future<void> _showDestinationMarker(double latitude, double longitude) async {
     if (_pointManager == null) return;
 
     if (_destinationMarker != null) {
@@ -156,29 +182,20 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
     _destinationMarker = await _pointManager!.create(
       PointAnnotationOptions(
-        geometry: Point(
-          coordinates: Position(
-            longitude,
-            latitude,
-          ),
-        ),
+        geometry: Point(coordinates: Position(longitude, latitude)),
         image: image,
         iconSize: 0.1,
       ),
     );
   }
 
-
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
-  Future<void> _showUserMarker(
-      double latitude,
-      double longitude,
-      ) async {
 
+  Future<void> _showUserMarker(double latitude, double longitude) async {
     if (_pointManager == null) return;
 
     final image = await _loadUserMarker();
@@ -189,12 +206,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
     _userMarker = await _pointManager!.create(
       PointAnnotationOptions(
-        geometry: Point(
-          coordinates: Position(
-            longitude,
-            latitude,
-          ),
-        ),
+        geometry: Point(coordinates: Position(longitude, latitude)),
         image: image,
         iconSize: 0.1,
       ),
@@ -203,34 +215,27 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(userHomeControllerProvider);
 
-    final state =
-    ref.watch(userHomeControllerProvider);
-
-    final notifier =
-    ref.read(userHomeControllerProvider.notifier);
+    final notifier = ref.read(userHomeControllerProvider.notifier);
 
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-
       resizeToAvoidBottomInset: true,
 
       body: Stack(
-
         children: [
           GestureDetector(
             onTap: () {
               FocusScope.of(context).unfocus();
             },
             child: MapWidget(
-
               key: const ValueKey("mapWidget"),
 
               styleUri: MapboxConfig.navigationStyle,
 
               cameraOptions: CameraOptions(
-
                 center: Point(
                   coordinates: Position(
                     state.pickupLocation.longitude,
@@ -242,42 +247,24 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               ),
 
               onTapListener: (mapContext) async {
-
                 final lat = mapContext.point.coordinates.lat;
                 final lng = mapContext.point.coordinates.lng;
 
                 print("MAP CLICK => $lat, $lng");
 
-                final destination = LatLng(
-                  lat.toDouble(),
-                  lng.toDouble(),
-                );
+                final destination = LatLng(lat.toDouble(), lng.toDouble());
 
-                notifier.updateLocationFromMap(
-                  destination,
-                );
-                await _showDestinationMarker(
-                  lat.toDouble(),
-                  lng.toDouble(),
-                );
+                notifier.updateLocationFromMap(destination);
+                await _showDestinationMarker(lat.toDouble(), lng.toDouble());
 
                 await _mapboxMap?.flyTo(
-
                   CameraOptions(
-
-                    center: Point(
-                      coordinates: Position(
-                        lng,
-                        lat,
-                      ),
-                    ),
+                    center: Point(coordinates: Position(lng, lat)),
 
                     zoom: 16,
                   ),
 
-                  MapAnimationOptions(
-                    duration: 1000,
-                  ),
+                  MapAnimationOptions(duration: 1000),
                 );
               },
 
@@ -286,8 +273,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
                 _pointManager = await controller.annotations
                     .createPointAnnotationManager();
-                _polylineManager =
-                await controller.annotations.createPolylineAnnotationManager();
+                _polylineManager = await controller.annotations
+                    .createPolylineAnnotationManager();
 
                 await _showUserMarker(
                   state.pickupLocation.latitude,
@@ -297,81 +284,54 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   await _drawRoute(state.routeCoordinates);
                 }
               },
-            )
+            ),
           ),
 
           Positioned(
-
             left: 20,
             right: 20,
             bottom: 140,
 
             child: AnimatedSlide(
-
-              duration: const Duration(
-                milliseconds: 250,
-              ),
+              duration: const Duration(milliseconds: 250),
 
               curve: Curves.easeInOut,
 
-              offset: keyboardVisible
-                  ? const Offset(0, 3)
-                  : Offset.zero,
+              offset: keyboardVisible ? const Offset(0, 3) : Offset.zero,
 
               child: AnimatedOpacity(
-
-                duration: const Duration(
-                  milliseconds: 200,
-                ),
+                duration: const Duration(milliseconds: 200),
 
                 opacity: keyboardVisible ? 0 : 1,
 
                 child: IgnorePointer(
-
                   ignoring: keyboardVisible,
 
-                  child: _buildBookingCard(
-                    context,
-                    state,
-                    notifier,
-                  ),
+                  child: _buildBookingCard(context, state, notifier),
                 ),
               ),
             ),
           ),
 
           Positioned(
-
             top: 80,
             left: 20,
             right: 20,
 
             child: Column(
-
               children: [
-
                 _buildSearchBar(notifier),
 
                 if (state.searchResults.isNotEmpty)
-
-                  _buildResultsOverlay(
-                    state,
-                    notifier,
-                    keyboardVisible,
-                  ),
+                  _buildResultsOverlay(state, notifier, keyboardVisible),
               ],
             ),
           ),
 
           IgnorePointer(
-
             child: Center(
-
               child: Padding(
-
-                padding: const EdgeInsets.only(
-                  bottom: 80,
-                ),
+                padding: const EdgeInsets.only(bottom: 80),
 
                 // child: Icon(
                 //
@@ -386,15 +346,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
           ),
 
           if (state.isLoading)
-
             Container(
-
               color: Colors.black26,
 
-              child: const Center(
-                child:
-                CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -406,12 +361,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-          ),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),
       child: TextField(
         controller: _searchController,
@@ -419,19 +369,16 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         decoration: InputDecoration(
           hintText: 'Où allez-vous ?',
           border: InputBorder.none,
-          prefixIcon: const Icon(
-            Icons.search,
-            color: Colors.green,
-          ),
+          prefixIcon: const Icon(Icons.search, color: Colors.green),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: () {
-              _searchController.clear();
-              notifier.clearDestination();
-              notifier.searchAddresses("");
-            },
-          )
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    notifier.clearDestination();
+                    notifier.searchAddresses("");
+                  },
+                )
               : null,
         ),
       ),
@@ -439,16 +386,14 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   }
 
   Widget _buildResultsOverlay(
-      UserHomeState state,
-      UserHomeController notifier,
-      bool keyboardVisible,
-      ) {
+    UserHomeState state,
+    UserHomeController notifier,
+    bool keyboardVisible,
+  ) {
     return Container(
       margin: const EdgeInsets.only(top: 0, left: 16, right: 16, bottom: 8),
 
-      constraints: BoxConstraints(
-        maxHeight: keyboardVisible ? 500 : 400,
-      ),
+      constraints: BoxConstraints(maxHeight: keyboardVisible ? 500 : 400),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -464,10 +409,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         shrinkWrap: true,
         padding: EdgeInsets.zero,
         itemCount: state.searchResults.length,
-        separatorBuilder: (_, __) => Divider(
-          height: 1,
-          color: Colors.grey.shade200,
-        ),
+        separatorBuilder: (_, __) =>
+            Divider(height: 1, color: Colors.grey.shade200),
         itemBuilder: (_, index) {
           final result = state.searchResults[index];
           return ListTile(
@@ -481,28 +424,21 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                 color: Colors.green.withOpacity(.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.location_on,
-                color: Colors.green,
-              ),
+              child: const Icon(Icons.location_on, color: Colors.green),
             ),
             title: Text(
               result.displayName,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: result.distanceFromUser != null
                 ? Text(
-              result.distanceFromUser! < 1000
-                  ? "${result.distanceFromUser!.toStringAsFixed(0)} m"
-                  : "${(result.distanceFromUser! / 1000).toStringAsFixed(1)} km",
-              style: TextStyle(
-                color: Colors.grey.shade600,
-              ),
-            )
+                    result.distanceFromUser! < 1000
+                        ? "${result.distanceFromUser!.toStringAsFixed(0)} m"
+                        : "${(result.distanceFromUser! / 1000).toStringAsFixed(1)} km",
+                    style: TextStyle(color: Colors.grey.shade600),
+                  )
                 : null,
             onTap: () async {
               notifier.selectSearchResult(result);
@@ -521,9 +457,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   ),
                   zoom: 16,
                 ),
-                MapAnimationOptions(
-                  duration: 1000,
-                ),
+                MapAnimationOptions(duration: 1000),
               );
 
               _searchController.text = result.displayName;
@@ -536,10 +470,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   }
 
   Widget _buildBookingCard(
-      BuildContext context,
-      UserHomeState state,
-      UserHomeController notifier,
-      ) {
+    BuildContext context,
+    UserHomeState state,
+    UserHomeController notifier,
+  ) {
     final current = state.currentAddress ?? "Localisation...";
     final destination = state.destinationAddress ?? "Choisir destination";
 
@@ -619,9 +553,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                 if (state.destinationLocation == null ||
                     state.destinationAddress == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Choisissez une destination"),
-                    ),
+                    const SnackBar(content: Text("Choisissez une destination")),
                   );
                   return;
                 }
@@ -661,5 +593,4 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       ),
     );
   }
-
 }

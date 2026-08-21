@@ -45,9 +45,17 @@ class RaceServiceImpl implements RaceService {
 
       return race;
     } else {
-      print("echec de la course : ${ response.body} et la status ${response.statusCode}");
-      debugPrint("echec de la course : ${ response.body} et la status ${response.statusCode}");
-      throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
+      print(
+        "echec de la course : ${response.body} et la status ${response.statusCode}",
+      );
+      debugPrint(
+        "echec de la course : ${response.body} et la status ${response.statusCode}",
+      );
+      throw Exception(
+        data['message'] ??
+            data['error'] ??
+            'Erreur serveur (${response.statusCode})',
+      );
     }
   }
 
@@ -101,38 +109,48 @@ class RaceServiceImpl implements RaceService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      print("Course mise à jour avec succès : ${data['race']['id']} avec biker_id ${data['biker_id']}");
+      print(
+        "Course mise à jour avec succès : ${data['race']['id']} avec biker_id ${data['biker_id']}",
+      );
       return Race.fromJson(data['race']); // on parse uniquement l'objet race
     } else {
       print("Échec de la mise à jour : ${response.body}");
-      throw Exception(data['message'] ?? data['error'] ?? 'Erreur serveur (${response.statusCode})');
+      throw Exception(
+        data['message'] ??
+            data['error'] ??
+            'Erreur serveur (${response.statusCode})',
+      );
     }
   }
 
-
   @override
   Future<RaceRouteModel> getRaceRoute(int raceId) async {
-
     final response = await http.get(
-
-      Uri.parse(
-          '$baseUrl/api/races/$raceId/route'
-      ),
+      Uri.parse('$baseUrl/api/races/$raceId/route'),
 
       headers: _headers(tokens),
     );
 
-    if(response.statusCode==200){
-
-      return RaceRouteModel.fromJson(
-
-          jsonDecode(response.body)
-
-      );
-
+    if (response.statusCode == 200) {
+      return RaceRouteModel.fromJson(jsonDecode(response.body));
     }
-    debugPrint("pro récupérer la route "+response.body);
+    debugPrint("pro récupérer la route " + response.body);
     throw Exception("Impossible de récupérer la route");
   }
 
+  @override
+  Future<RaceRouteModel> confirmPassenger(int raceId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/races/$raceId/confirmPassenger'),
+      headers: _headers(tokens),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return RaceRouteModel.fromJson({
+        'race_id': raceId,
+        'route': data['route'],
+      });
+    }
+    throw Exception(data['message'] ?? 'Impossible de confirmer la course');
+  }
 }

@@ -150,6 +150,19 @@ class BikerHistoryPage extends ConsumerWidget {
       );
     }
 
+    if (race.status == 'accepted') {
+      return ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text("COURSE ACCEPTÉE · EN ATTENTE PASSAGER"),
+      );
+    }
+
     if (race.status == 'pending') {
       if (hasActiveRace) {
         return ElevatedButton(
@@ -240,6 +253,10 @@ class BikerHistoryPage extends ConsumerWidget {
         color = Colors.orange;
         label = "EN ATTENTE";
         break;
+      case 'accepted':
+        color = Colors.deepOrange;
+        label = "ACCEPTÉE";
+        break;
       case 'completed':
         color = Colors.green;
         label = "TERMINÉE";
@@ -253,7 +270,7 @@ class BikerHistoryPage extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

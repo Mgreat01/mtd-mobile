@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:get_storage/get_storage.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService.dart';
+import 'package:moto_taxi_digital_mobile/framework/cache/appCacheStore.dart';
 
 class UserLocalServiceImpl implements UserLocalService {
   GetStorage? box;
@@ -11,8 +12,10 @@ class UserLocalServiceImpl implements UserLocalService {
   @override
   Future<bool> deleteUser() async {
     if (box == null) return false;
+    await AppCacheStore(storage: box).clearCurrentUser();
     await box!.remove("user");
     await box!.remove("data");
+    await box!.remove("token");
     return true;
   }
 

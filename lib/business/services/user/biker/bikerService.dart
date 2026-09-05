@@ -21,6 +21,12 @@ abstract class BikerService {
     required double lat,
     required double lng,
     required bool isActive,
+    double? accuracyMeters,
+    double? speedKmh,
+    double? headingDegrees,
+    DateTime? capturedAt,
+    String? sessionId,
+    int? sequence,
   });
   Future<List<BikerMarkerData>> getActiveBikers();
   Future<List<AppNotification>> getNotifications();

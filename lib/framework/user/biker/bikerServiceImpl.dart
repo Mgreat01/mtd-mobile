@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
@@ -7,10 +8,13 @@ import 'package:moto_taxi_digital_mobile/business/models/notification/appNotific
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/biker/biker.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
+import 'package:moto_taxi_digital_mobile/framework/cache/appCacheStore.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 import '../../../utils/appConfig.dart';
 
 class BikerServiceImpl implements BikerService {
+  final AppCacheStore _cache = AppCacheStore();
+
   String get baseUrl => AppConfig.apiUrl;
   String get _token => GetStorage().read<String>('token') ?? '';
 
@@ -45,27 +49,12 @@ class BikerServiceImpl implements BikerService {
 
   @override
   Future<List<Race>> getBikerRaces() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/races'),
-      headers: _headers(_token),
+    return _loadRacesWithCache(
+      cacheKey: 'biker_races',
+      endpoint: '/api/bikers/races',
+      ttl: const Duration(minutes: 5),
+      missingMessage: "Historique absent de la réponse",
     );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        "Impossible de charger l'historique (${response.statusCode})",
-      );
-    }
-    final data = jsonDecode(response.body);
-    final dynamic raceData = data is List
-        ? data
-        : data['races'] ?? data['data'];
-    if (raceData is! List) {
-      throw const FormatException("Historique absent de la réponse");
-    }
-    return raceData
-        .whereType<Map<String, dynamic>>()
-        .map(Race.fromJson)
-        .toList();
   }
 
   @override
@@ -81,49 +70,64 @@ class BikerServiceImpl implements BikerService {
 
   @override
   Future<dynamic> getBalance() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/wallets/balance'),
-      headers: _headers(_token),
-    );
-    final data = jsonDecode(response.body);
-    return (data['balance']);
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/wallets/balance'),
+        headers: _headers(_token),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Solde indisponible (${response.statusCode})');
+      }
+      final data = jsonDecode(response.body);
+      await _cache.writeJson(
+        'wallet_balance',
+        data,
+        ttl: const Duration(minutes: 2),
+      );
+      return data['balance'];
+    } catch (_) {
+      final cached = _cache.readJson('wallet_balance', allowExpired: true);
+      if (cached is Map) return cached['balance'];
+      rethrow;
+    }
   }
 
   @override
   Future<List<Race>> getCourses() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/new-races'),
-      headers: _headers(_token),
+    return _loadRacesWithCache(
+      cacheKey: 'available_races',
+      endpoint: '/api/bikers/new-races',
+      ttl: const Duration(seconds: 45),
+      missingMessage: "Liste de courses absente de la réponse",
     );
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Impossible de charger les courses (${response.statusCode})',
-      );
-    }
-    final data = jsonDecode(response.body);
-    final dynamic raceData = data is List
-        ? data
-        : data['races'] ?? data['data'];
-    if (raceData is! List) {
-      throw const FormatException("Liste de courses absente de la réponse");
-    }
-    return raceData
-        .whereType<Map<String, dynamic>>()
-        .map(Race.fromJson)
-        .toList();
   }
 
   @override
   Future getPrices() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/price-lists'),
-      headers: _headers(_token),
-    );
-    final data = jsonDecode(response.body);
-    print(data);
-    final reponse = data['price_lists'];
-    debugPrint("voila les prix ${reponse}");
-    return reponse;
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/price-lists'),
+        headers: _headers(_token),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Tarifs indisponibles (${response.statusCode})');
+      }
+      final data = jsonDecode(response.body);
+      final prices = data is Map ? data['price_lists'] : null;
+      if (prices is! List) {
+        throw const FormatException('Liste de tarifs absente de la réponse');
+      }
+      await _cache.writeJson(
+        'price_lists',
+        prices,
+        ttl: const Duration(hours: 1),
+      );
+      return prices;
+    } catch (_) {
+      final cached = _cache.readJson('price_lists', allowExpired: true);
+      if (cached is List) return cached;
+      rethrow;
+    }
   }
 
   @override
@@ -131,6 +135,12 @@ class BikerServiceImpl implements BikerService {
     required double lat,
     required double lng,
     required bool isActive,
+    double? accuracyMeters,
+    double? speedKmh,
+    double? headingDegrees,
+    DateTime? capturedAt,
+    String? sessionId,
+    int? sequence,
   }) async {
     try {
       final response = await http.post(
@@ -140,14 +150,26 @@ class BikerServiceImpl implements BikerService {
           'latitude': lat,
           'longitude': lng,
           'is_active': isActive,
+          if (accuracyMeters != null) 'accuracy_meters': accuracyMeters,
+          if (speedKmh != null) 'speed_kmh': speedKmh,
+          if (headingDegrees != null) 'heading_degrees': headingDegrees,
+          if (capturedAt != null)
+            'captured_at': capturedAt.toUtc().toIso8601String(),
+          if (sessionId != null) 'session_id': sessionId,
+          if (sequence != null) 'sequence': sequence,
         }),
       );
 
       if (response.statusCode != 200) {
-        debugPrint("Erreur mise à jour position: ${response.body}");
+        final body = jsonDecode(response.body);
+        final message = body is Map ? body['message'] ?? body['error'] : null;
+        throw Exception(
+          message ?? 'Mise à jour de position refusée (${response.statusCode})',
+        );
       }
     } catch (e) {
       debugPrint("Erreur réseau updateLocation: $e");
+      rethrow;
     }
   }
 
@@ -179,28 +201,29 @@ class BikerServiceImpl implements BikerService {
   }
 
   Future<List<AppNotification>> getNotifications() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/biker/notifications'),
-      headers: _headers(_token),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/biker/notifications'),
+        headers: _headers(_token),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Erreur notifications (${response.statusCode})');
+      }
       final data = jsonDecode(response.body);
-      print(response.statusCode);
-      print(response.body);
-      final list = data['notifications'];
-
-      print("RAW LIST: $list");
-      print("LENGTH: ${list.length}");
-      print("status code pour notification ${response.statusCode}");
-
-      return (data['notifications'] as List)
-          .map((e) => AppNotification.fromJson(e))
-          .toList();
-    } else {
-      debugPrint("Erreur notifications: ${response.body}");
-      debugPrint("Status code: ${response.statusCode}");
-      throw Exception("Erreur notifications");
+      final notifications = data['notifications'];
+      if (notifications is! List) {
+        throw const FormatException('Notifications absentes de la réponse');
+      }
+      await _cache.writeJson(
+        'biker_notifications',
+        notifications,
+        ttl: const Duration(minutes: 10),
+      );
+      return _notificationsFromJson(notifications);
+    } catch (_) {
+      final cached = _cache.readJson('biker_notifications', allowExpired: true);
+      if (cached is List) return _notificationsFromJson(cached);
+      rethrow;
     }
   }
 
@@ -215,7 +238,55 @@ class BikerServiceImpl implements BikerService {
       debugPrint('Erreur lecture notifications: ${response.body}');
       throw Exception('Impossible de marquer les notifications comme lues');
     }
+    await _cache.remove('biker_notifications');
   }
+
+  Future<List<Race>> _loadRacesWithCache({
+    required String cacheKey,
+    required String endpoint,
+    required Duration ttl,
+    required String missingMessage,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: _headers(_token),
+      );
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Impossible de charger les courses (${response.statusCode})',
+        );
+      }
+      final data = jsonDecode(response.body);
+      final raceData = _raceList(data);
+      if (raceData == null) throw FormatException(missingMessage);
+      await _cache.writeJson(cacheKey, raceData, ttl: ttl);
+      return _racesFromJson(raceData);
+    } catch (_) {
+      final cached = _cache.readJson(cacheKey, allowExpired: true);
+      if (cached is List) return _racesFromJson(cached);
+      rethrow;
+    }
+  }
+
+  List<dynamic>? _raceList(dynamic data) {
+    if (data is List) return data;
+    if (data is Map) {
+      final races = data['races'] ?? data['data'];
+      return races is List ? races : null;
+    }
+    return null;
+  }
+
+  List<Race> _racesFromJson(List<dynamic> data) => data
+      .whereType<Map>()
+      .map((item) => Race.fromJson(Map<String, dynamic>.from(item)))
+      .toList();
+
+  List<AppNotification> _notificationsFromJson(List<dynamic> data) => data
+      .whereType<Map>()
+      .map((item) => AppNotification.fromJson(Map<String, dynamic>.from(item)))
+      .toList();
 
   Future<RaceRouteModel?> getBikerPassengerTrack({
     required int raceId,

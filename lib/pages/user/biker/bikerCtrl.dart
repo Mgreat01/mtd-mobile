@@ -22,6 +22,9 @@ class BikerController extends StateNotifier<BikerState> {
   DateTime? _lastRouteRefreshAt;
   LatLng? _lastRouteRefreshPosition;
   Future<void>? _routeLoadInProgress;
+  int _locationSequence = 0;
+  final String _locationSessionId =
+      'mobile-${DateTime.now().toUtc().microsecondsSinceEpoch}';
 
   List<AppNotification> _oldNotifications = [];
 
@@ -136,7 +139,8 @@ class BikerController extends StateNotifier<BikerState> {
   }
 
   bool _isAssignedActiveRace(Race race) {
-    return race.status == 'ongoing' ||
+    return race.status == 'accepted' ||
+        race.status == 'ongoing' ||
         (race.status == 'pending' && race.bikerId != null);
   }
 
@@ -324,6 +328,14 @@ class BikerController extends StateNotifier<BikerState> {
           lat: position.latitude,
           lng: position.longitude,
           isActive: true,
+          accuracyMeters: position.accuracy >= 0 ? position.accuracy : null,
+          speedKmh: position.speed >= 0 ? position.speed * 3.6 : null,
+          headingDegrees: position.heading >= 0 && position.heading < 360
+              ? position.heading
+              : null,
+          capturedAt: position.timestamp,
+          sessionId: _locationSessionId,
+          sequence: ++_locationSequence,
         );
       } catch (e) {
         print("Erreur update location : $e");
@@ -431,16 +443,48 @@ class BikerController extends StateNotifier<BikerState> {
     final realtimeService = getIt.get<RealtimeNotificationService>();
     _realtimeNotificationSubscription = realtimeService.notifications.listen((
       payload,
-    ) {
-      if (payload['_event'] == 'race.confirmed') {
-        _applyConfirmedRace(payload);
-        return;
+    ) async {
+      switch (payload['_event']) {
+        case 'realtime.bootstrap':
+          await _restoreRealtimeSession(payload);
+          return;
+        case 'race.confirmed':
+          _applyConfirmedRace(payload);
+          return;
+        case 'race.state.updated':
+          await _applyRaceState(payload);
+          return;
+        case 'biker.location.updated':
+          return;
+        default:
+          _applyRealtimeNotification(payload);
+          unawaited(fetchNotifications());
+          unawaited(refreshData());
       }
-      _applyRealtimeNotification(payload);
-      unawaited(fetchNotifications());
-      unawaited(refreshData());
     });
     await realtimeService.connect();
+  }
+
+  Future<void> _restoreRealtimeSession(Map<String, dynamic> payload) async {
+    final raceJson = payload['active_race'];
+    if (raceJson is! Map) return;
+    try {
+      await applyRaceUpdate(Race.fromJson(Map<String, dynamic>.from(raceJson)));
+    } catch (error) {
+      debugPrint('Bootstrap biker invalide: $error');
+      unawaited(refreshData());
+    }
+  }
+
+  Future<void> _applyRaceState(Map<String, dynamic> payload) async {
+    final raceId = int.tryParse(payload['race_id']?.toString() ?? '');
+    if (raceId == null) return;
+    final status = payload['status']?.toString();
+    if (state.activeRace?.id == raceId &&
+        (status == 'completed' || status == 'cancelled')) {
+      _clearActiveRoute();
+    }
+    await refreshData();
   }
 
   void _applyConfirmedRace(Map<String, dynamic> payload) {

@@ -28,7 +28,7 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
 
   List<Race> get activeRaces {
     return state.allRaces
-        .where((r) => ['pending', 'ongoing'].contains(r.status))
+        .where((r) => ['pending', 'accepted', 'ongoing'].contains(r.status))
         .toList();
   }
 
@@ -73,9 +73,7 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
 
       state = state.copyWith(allRaces: updatedRaces, isLoading: false);
       final bikerController = ref.read(bikerControllerProvider.notifier);
-      final navigationController = ref.read(
-        navigationIndexProvider.notifier,
-      );
+      final navigationController = ref.read(navigationIndexProvider.notifier);
 
       // applyRaceUpdate enregistre la course active de façon synchrone avant
       // de lancer l'appel d'itinéraire. On peut donc ouvrir la carte tout de
@@ -90,6 +88,7 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
   bool get isRaceActive {
     return state.allRaces.any(
       (race) =>
+          race.status == 'accepted' ||
           race.status == 'ongoing' ||
           (race.status == 'pending' && race.bikerId != null),
     );

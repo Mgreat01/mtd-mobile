@@ -3,6 +3,8 @@ import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService
 import 'package:moto_taxi_digital_mobile/main.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
+import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotificationService.dart';
+import 'package:moto_taxi_digital_mobile/utils/navigationUtils.dart';
 
 class ComposantController extends StateNotifier<int> {
   final Ref ref;
@@ -16,19 +18,21 @@ class ComposantController extends StateNotifier<int> {
 
   Future<void> logout() async {
     try {
+      await getIt.get<RealtimeNotificationService>().disconnect();
       await _localService.deleteUser();
 
-      ref.read(appCtrlProvider.notifier).clearUser();
-      ref.read(loginControllerProvider.notifier).clearUser();
+      await ref.read(appCtrlProvider.notifier).clearUser();
+      await ref.read(loginControllerProvider.notifier).clearUser();
 
       state = 0;
-
+      getIt.get<NavigationUtils>().goNamed('login_page');
     } catch (e) {
       print("Erreur de déconnexion: $e");
     }
   }
 }
 
-final navigationIndexProvider = StateNotifierProvider.autoDispose<ComposantController, int>((ref) {
-  return ComposantController(ref);
-});
+final navigationIndexProvider =
+    StateNotifierProvider.autoDispose<ComposantController, int>((ref) {
+      return ComposantController(ref);
+    });

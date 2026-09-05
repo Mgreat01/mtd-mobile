@@ -1,6 +1,4 @@
 import 'package:latlong2/latlong.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
 
@@ -87,15 +85,19 @@ class UserHomeState {
 
     List<BikerMarkerData>? nearbyBikers,
     BikerMarkerData? selectedBiker,
+    bool clearSelectedBiker = false,
     RaceRouteModel? currentRoute,
+    bool clearCurrentRoute = false,
 
     List<List<double>>? routeCoordinates,
 
     Race? currentRace,
+    bool clearCurrentRace = false,
     UserStep? step,
     double? routeDistanceKm,
     double? routeDurationMin,
     String? errorMessage,
+    bool clearErrorMessage = false,
     Map<String, dynamic>? bikerAcceptance,
     bool clearBikerAcceptance = false,
   }) {
@@ -111,17 +113,23 @@ class UserHomeState {
       searchResults: searchResults ?? this.searchResults,
 
       nearbyBikers: nearbyBikers ?? this.nearbyBikers,
-      selectedBiker: selectedBiker ?? this.selectedBiker,
-      currentRoute: currentRoute ?? this.currentRoute,
+      selectedBiker: clearSelectedBiker
+          ? null
+          : selectedBiker ?? this.selectedBiker,
+      currentRoute: clearCurrentRoute
+          ? null
+          : currentRoute ?? this.currentRoute,
 
       routeCoordinates: routeCoordinates ?? this.routeCoordinates,
 
-      currentRace: currentRace ?? this.currentRace,
+      currentRace: clearCurrentRace ? null : currentRace ?? this.currentRace,
       step: step ?? this.step,
       routeDistanceKm: routeDistanceKm ?? this.routeDistanceKm,
 
       routeDurationMin: routeDurationMin ?? this.routeDurationMin,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : errorMessage ?? this.errorMessage,
       bikerAcceptance: clearBikerAcceptance
           ? null
           : bikerAcceptance ?? this.bikerAcceptance,

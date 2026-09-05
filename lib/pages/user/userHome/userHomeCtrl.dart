@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
@@ -62,8 +62,23 @@ class UserHomeController extends StateNotifier<UserHomeState> {
 
   Future<void> _listenToRealtimeEvents() async {
     final realtime = getIt.get<RealtimeNotificationService>();
-    _realtimeSubscription = realtime.notifications.listen((payload) {
-      if (payload['_event'] != 'race.accepted') return;
+    _realtimeSubscription = realtime.notifications.listen((payload) async {
+      switch (payload['_event']) {
+        case 'realtime.bootstrap':
+          _restoreRealtimeSession(payload);
+          return;
+        case 'biker.location.updated':
+          _applyBikerLocation(payload);
+          return;
+        case 'race.state.updated':
+          await _applyRaceState(payload);
+          return;
+        case 'race.accepted':
+          break;
+        default:
+          return;
+      }
+
       final race = payload['race'];
       if (race is! Map) {
         debugPrint('Acceptation temps réel ignorée : course absente.');
@@ -79,11 +94,91 @@ class UserHomeController extends StateNotifier<UserHomeState> {
           step: UserStep.waitingForBiker,
           bikerAcceptance: payload,
         );
+        _applyBikerLocation(payload);
       } catch (error) {
         debugPrint('Acceptation temps réel invalide : $error');
       }
     });
     await realtime.connect();
+  }
+
+  void _restoreRealtimeSession(Map<String, dynamic> payload) {
+    final raceJson = payload['active_race'];
+    if (raceJson is! Map) return;
+    try {
+      final race = Race.fromJson(Map<String, dynamic>.from(raceJson));
+      final step = race.status == 'ongoing'
+          ? UserStep.inRace
+          : UserStep.waitingForBiker;
+      state = state.copyWith(currentRace: race, step: step);
+      _applyBikerLocation({
+        'race_id': race.id,
+        'biker_id': race.bikerId,
+        'location': payload['biker_location'],
+      });
+    } catch (error) {
+      debugPrint('Bootstrap de course invalide: $error');
+    }
+  }
+
+  Future<void> _applyRaceState(Map<String, dynamic> payload) async {
+    final raceId = int.tryParse(payload['race_id']?.toString() ?? '');
+    if (raceId == null || state.currentRace?.id != raceId) return;
+
+    final status = payload['status']?.toString();
+    if (status == 'completed' || status == 'cancelled') {
+      state = state.copyWith(
+        clearCurrentRace: true,
+        clearCurrentRoute: true,
+        clearSelectedBiker: true,
+        routeCoordinates: const [],
+        routeDistanceKm: 0,
+        routeDurationMin: 0,
+        step: UserStep.searching,
+      );
+      return;
+    }
+
+    try {
+      final updatedRace = await _raceService.getRaceById(raceId);
+      if (state.currentRace?.id != raceId) return;
+      state = state.copyWith(
+        currentRace: updatedRace,
+        step: updatedRace.status == 'ongoing'
+            ? UserStep.inRace
+            : UserStep.waitingForBiker,
+      );
+    } catch (error) {
+      debugPrint('Synchronisation etat course impossible: $error');
+    }
+  }
+
+  void _applyBikerLocation(Map<String, dynamic> payload) {
+    final location = payload['location'] ?? payload['biker_location'];
+    if (location is! Map) return;
+    final latitude = double.tryParse(location['latitude']?.toString() ?? '');
+    final longitude = double.tryParse(location['longitude']?.toString() ?? '');
+    final bikerId =
+        int.tryParse(payload['biker_id']?.toString() ?? '') ??
+        state.currentRace?.bikerId;
+    if (latitude == null || longitude == null || bikerId == null) return;
+
+    final raceId = int.tryParse(payload['race_id']?.toString() ?? '');
+    if (raceId != null && state.currentRace?.id != raceId) return;
+
+    final previous = state.selectedBiker;
+    final marker = BikerMarkerData(
+      id: bikerId,
+      name: previous?.name ?? 'Biker',
+      position: LatLng(latitude, longitude),
+      currentRace: state.currentRace,
+    );
+    final nearby = [
+      for (final biker in state.nearbyBikers)
+        if (biker.id == bikerId) marker else biker,
+      if (!state.nearbyBikers.any((biker) => biker.id == bikerId)) marker,
+    ];
+    state = state.copyWith(selectedBiker: marker, nearbyBikers: nearby);
   }
 
   void _listenToGpsChanges() {
@@ -340,10 +435,6 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       final createdRace = await _raceService.createRace(newRace);
 
       final route = await _raceService.getRaceRoute(createdRace.id);
-      final distance = route.route.distance / 1000;
-
-      final duration = route.route.duration / 60;
-
       state = state.copyWith(
         currentRace: createdRace,
         currentRoute: route,
@@ -367,9 +458,12 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       await _raceService.deletedRace(state.currentRace!.id);
 
       state = state.copyWith(
-        currentRace: null,
-        selectedBiker: null,
+        clearCurrentRace: true,
+        clearCurrentRoute: true,
+        routeCoordinates: const [],
+        clearSelectedBiker: true,
         step: UserStep.searching,
+        clearErrorMessage: true,
       );
     } catch (e) {
       print("Erreur annulation: $e");
@@ -397,6 +491,37 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         isLoading: false,
         errorMessage: error.toString().replaceFirst('Exception: ', ''),
       );
+    }
+  }
+
+  Future<bool> completeActiveRace() async {
+    final race = state.currentRace;
+    if (race == null || race.status != 'ongoing' || state.isLoading) {
+      return false;
+    }
+
+    state = state.copyWith(isLoading: true, clearErrorMessage: true);
+    try {
+      await _raceService.completeRace(race.id);
+      state = state.copyWith(
+        clearCurrentRace: true,
+        clearCurrentRoute: true,
+        routeCoordinates: const [],
+        routeDistanceKm: 0,
+        routeDurationMin: 0,
+        clearSelectedBiker: true,
+        step: UserStep.searching,
+        isLoading: false,
+        clearErrorMessage: true,
+      );
+      await refreshBikers();
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: error.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
     }
   }
 

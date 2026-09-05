@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRacePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/course/confirmRaceState.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/RaceTrackingPage.dart';
 
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
 import 'package:moto_taxi_digital_mobile/utils/mapbox_config.dart';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
 class UserHomePage extends ConsumerStatefulWidget {
@@ -399,7 +399,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.08),
+            color: Colors.black.withValues(alpha: .08),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
@@ -421,7 +421,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             leading: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(.1),
+                color: Colors.green.withValues(alpha: .1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.location_on, color: Colors.green),
@@ -474,6 +474,10 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     UserHomeState state,
     UserHomeController notifier,
   ) {
+    if (state.step == UserStep.inRace && state.currentRace != null) {
+      return _buildInProgressCard(context, state);
+    }
+
     final current = state.currentAddress ?? "Localisation...";
     final destination = state.destinationAddress ?? "Choisir destination";
 
@@ -486,7 +490,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(.1),
+            color: theme.colorScheme.shadow.withValues(alpha: .1),
             blurRadius: 15,
           ),
         ],
@@ -587,6 +591,50 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                 "RÉSERVER",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInProgressCard(BuildContext context, UserHomeState state) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.directions_bike, color: Colors.green),
+              SizedBox(width: 8),
+              Text(
+                'Course en cours',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            state.currentRace!.destination,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RaceTrackingPage(),
+                ),
+              ),
+              child: const Text('SUIVRE OU TERMINER LA COURSE'),
             ),
           ),
         ],

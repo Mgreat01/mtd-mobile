@@ -28,6 +28,29 @@ class RaceServiceImpl implements RaceService {
   }
 
   @override
+  Future<Race> completeRace(int raceId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/races/$raceId/complete'),
+      headers: _headers(tokens),
+    );
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final race = data is Map ? data['race'] : null;
+      if (race is Map) return Race.fromJson(Map<String, dynamic>.from(race));
+      throw const FormatException('Course terminée absente de la réponse');
+    }
+
+    throw Exception(
+      data is Map
+          ? data['message'] ??
+                data['error'] ??
+                'Impossible de terminer la course'
+          : 'Impossible de terminer la course',
+    );
+  }
+
+  @override
   Future<Race> createRace(Race race) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/races'),

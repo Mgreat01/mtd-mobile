@@ -7,6 +7,7 @@ abstract class RaceService {
   Future<Race> getRaceById(int id);
   Future<int> deletedRace(int id);
   Future<Race> completedRace(dynamic race);
+  Future<Race> completeRace(int raceId);
   Future<Race> updateRaceBiker(int id);
   Future<RaceRouteModel> getRaceRoute(int raceId);
   Future<RaceRouteModel> confirmPassenger(int raceId);

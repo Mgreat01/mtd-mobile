@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
@@ -20,9 +19,6 @@ class AppDrawer extends ConsumerWidget {
 
     var data = authState.user;
     print(data?.photo);
-    final String name = authState.user?.name ?? "";
-    final String prenom = authState.user?.prenom ?? "";
-
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.8,
       shape: const RoundedRectangleBorder(
@@ -40,7 +36,8 @@ class AppDrawer extends ConsumerWidget {
                 _buildDrawerItem(
                   icon: Icons.home_filled,
                   label: "Accueil",
-                  onTap: () => ref.read(navigationIndexProvider.notifier).setIndex(0),
+                  onTap: () =>
+                      ref.read(navigationIndexProvider.notifier).setIndex(0),
                   theme: theme,
                 ),
                 _buildDrawerItem(
@@ -81,8 +78,10 @@ class AppDrawer extends ConsumerWidget {
                   icon: Icons.logout,
                   label: "Déconnexion",
                   onTap: () async {
+                    final router = GoRouter.of(context);
                     Navigator.pop(context);
                     await ref.read(navigationIndexProvider.notifier).logout();
+                    router.goNamed('login_page');
                   },
                   theme: theme,
                   isLogout: true,
@@ -107,7 +106,10 @@ class AppDrawer extends ConsumerWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? [theme.colorScheme.secondary, theme.colorScheme.secondary.withOpacity(0.8)]
+              ? [
+                  theme.colorScheme.secondary,
+                  theme.colorScheme.secondary.withOpacity(0.8),
+                ]
               : [Colors.grey.shade800, Colors.grey.shade600],
         ),
         borderRadius: const BorderRadius.only(
@@ -172,7 +174,8 @@ class AppDrawer extends ConsumerWidget {
       return const AssetImage('assets/images/default_avatar.png');
     }
 
-    final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://votre-backend.test';
+    final String baseUrl =
+        dotenv.env['API_BASE_URL'] ?? 'http://votre-backend.test';
     var imageEndPoint = baseUrl.endsWith("/api")
         ? baseUrl.replaceFirst("/api", "/storage/")
         : baseUrl;
@@ -190,9 +193,7 @@ class AppDrawer extends ConsumerWidget {
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -218,19 +219,19 @@ class AppDrawer extends ConsumerWidget {
         ),
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  Widget _buildThemeToggle(ThemeData theme, AppThemeMode currentMode, ThemeNotifier notifier) {
+  Widget _buildThemeToggle(
+    ThemeData theme,
+    AppThemeMode currentMode,
+    ThemeNotifier notifier,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -239,7 +240,9 @@ class AppDrawer extends ConsumerWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
-            currentMode == AppThemeMode.light ? Icons.light_mode : Icons.dark_mode,
+            currentMode == AppThemeMode.light
+                ? Icons.light_mode
+                : Icons.dark_mode,
             color: theme.colorScheme.primary,
             size: 22,
           ),

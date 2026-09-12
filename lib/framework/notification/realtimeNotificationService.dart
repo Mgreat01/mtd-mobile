@@ -325,6 +325,9 @@ class RealtimeNotificationService {
 
     final socket = _socket;
     _socket = null;
-    if (socket != null) await socket.close();
+    // La fermeture WebSocket peut attendre le réseau indéfiniment. La session
+    // applicative est déjà invalidée ci-dessus, donc elle ne doit jamais
+    // empêcher une déconnexion hors ligne.
+    if (socket != null) unawaited(socket.close());
   }
 }

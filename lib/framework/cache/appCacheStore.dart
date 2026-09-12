@@ -51,10 +51,12 @@ class AppCacheStore {
 
   Future<void> clearCurrentUser() async {
     final scope = _scope();
-    final matchingKeys = _storage
-        .getKeys()
-        .where((key) => key.startsWith('$_prefix:$scope:'))
-        .toList(growable: false);
+    // `getKeys()` n'a pas le même type de retour sur toutes les versions de
+    // GetStorage. Une boucle typée évite une erreur runtime pendant logout.
+    final matchingKeys = <String>[
+      for (final key in _storage.getKeys())
+        if (key is String && key.startsWith('$_prefix:$scope:')) key,
+    ];
     for (final key in matchingKeys) {
       await _storage.remove(key);
     }

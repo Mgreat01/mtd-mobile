@@ -6,10 +6,10 @@ import '../../business/services/user/userLocalService.dart';
 import '../../main.dart';
 import 'appState.dart';
 
-class AppCtrl  extends StateNotifier<AppState>{
-  var userLocalService=getIt<UserLocalService>();
+class AppCtrl extends StateNotifier<AppState> {
+  var userLocalService = getIt<UserLocalService>();
 
-AppCtrl() : super(AppState(isLoading: true)) {
+  AppCtrl() : super(AppState(isLoading: true)) {
     getUser();
   }
 
@@ -19,7 +19,6 @@ AppCtrl() : super(AppState(isLoading: true)) {
 
   Future<void> getUser() async {
     try {
-
       var user = await userLocalService.getUser();
       state = state.copyWith(user: user, isLoading: false);
     } catch (e) {
@@ -38,9 +37,10 @@ AppCtrl() : super(AppState(isLoading: true)) {
     }
   }
 
-
+  void resetUserInMemory() {
+    state = AppState(user: null, error: null, isLoading: false);
+  }
 }
-
 
 final appCtrlProvider = StateNotifierProvider<AppCtrl, AppState>((ref) {
   ref.keepAlive();

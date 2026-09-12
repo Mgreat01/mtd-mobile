@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/authentification.dart';
-import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
@@ -12,10 +11,9 @@ class LoginController extends StateNotifier<LoginState> {
   final UserLocalService _localService = getIt.get<UserLocalService>();
   final Ref ref;
 
-  LoginController(this.ref) : super(const LoginState()){
+  LoginController(this.ref) : super(const LoginState()) {
     _initializeUser(); // Charge l'utilisateur au démarrage
   }
-
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null, isSuccess: false);
@@ -27,7 +25,7 @@ class LoginController extends StateNotifier<LoginState> {
       if (user != null && user.token != null) {
         await _localService.saveUser(user);
         ref.read(appCtrlProvider.notifier).updateUser(user);
-        state = state.copyWith(isLoading: false, isSuccess: true,user: user);
+        state = state.copyWith(isLoading: false, isSuccess: true, user: user);
       } else {
         state = state.copyWith(
           isLoading: false,
@@ -82,9 +80,14 @@ class LoginController extends StateNotifier<LoginState> {
       state = state.copyWith(error: e.toString(), isLoading: false);
     }
   }
+
+  void resetUserInMemory() {
+    state = const LoginState(user: null, error: null, isLoading: false);
+  }
 }
 
 // Provider global
-final loginControllerProvider = StateNotifierProvider<LoginController, LoginState>((ref) {
-  return LoginController(ref);
-});
+final loginControllerProvider =
+    StateNotifierProvider<LoginController, LoginState>((ref) {
+      return LoginController(ref);
+    });

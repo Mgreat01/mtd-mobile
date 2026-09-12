@@ -11,19 +11,16 @@ import 'package:moto_taxi_digital_mobile/business/models/wallet/wallet.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:http/http.dart' as http;
 import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
-import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 
 class UserNetworkServiceImpl implements UserNetworkService {
-
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token')??'';
+  String tokens = GetStorage().read('token') ?? '';
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Authorization': 'Bearer $tokens',
   };
-
 
   @override
   Future<User?> login(Authentication authentication) async {
@@ -69,16 +66,71 @@ class UserNetworkServiceImpl implements UserNetworkService {
       }
     } on http.ClientException catch (e) {
       throw Exception("Problème réseau : $e");
-
     } on FormatException catch (e) {
       throw Exception("Réponse du serveur invalide.");
-
     } catch (e) {
       throw Exception(e.toString());
     }
   }
 
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/forgot-password'),
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_responseMessage(response));
+    }
+  }
 
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/reset-password'),
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': password,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_responseMessage(response));
+    }
+  }
+
+  String _responseMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map) {
+        final errors = body['errors'];
+        if (errors is Map) {
+          for (final value in errors.values) {
+            if (value is List && value.isNotEmpty)
+              return value.first.toString();
+          }
+        }
+        final message = body['message'] ?? body['error'];
+        if (message != null) return message.toString();
+      }
+    } catch (_) {
+      // Réponse non JSON : utiliser le message HTTP générique ci-dessous.
+    }
+    return 'Impossible de traiter la demande (${response.statusCode}).';
+  }
 
   @override
   Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
@@ -100,12 +152,12 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   @override
   Future<User?> registerUser(
-      User user, {
-        File? profilePhoto,
-        File? identityDoc,
-        File? registrationCard,
-        File? businessLicense,
-      }) async {
+    User user, {
+    File? profilePhoto,
+    File? identityDoc,
+    File? registrationCard,
+    File? businessLicense,
+  }) async {
     try {
       final url = Uri.parse('$baseUrl/api/register');
       print(" Tentative d'envoi à : $url");
@@ -119,10 +171,10 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
       final fields = user.toMultipartFields();
       fields.forEach((key, value) {
-         request.fields[key] = value?.toString() ?? "";
+        request.fields[key] = value?.toString() ?? "";
       });
 
-     File? fileToUpload;
+      File? fileToUpload;
       if (profilePhoto != null && await profilePhoto.exists()) {
         fileToUpload = profilePhoto;
       } else if (user.photo != null) {
@@ -131,7 +183,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
       }
 
       if (fileToUpload != null) {
-        request.files.add(await http.MultipartFile.fromPath('photo', fileToUpload.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('photo', fileToUpload.path),
+        );
         print(" Photo de profil ajoutée : ${fileToUpload.path}");
       }
 
@@ -147,7 +201,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
       await addFileIfValid('business_license', businessLicense);
 
       print(" Envoi de la requête en cours...");
-      var streamedResponse = await request.send().timeout(const Duration(seconds: 40));
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 40),
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
       print("Statut Serveur : ${response.statusCode}");
@@ -158,10 +214,14 @@ class UserNetworkServiceImpl implements UserNetworkService {
         return User.fromJson(data['user']);
       } else {
         final errorData = jsonDecode(response.body);
-        throw Exception(errorData['message'] ?? "Erreur serveur (${response.statusCode})");
+        throw Exception(
+          errorData['message'] ?? "Erreur serveur (${response.statusCode})",
+        );
       }
     } on SocketException {
-      throw Exception("Impossible de joindre le serveur. Vérifiez votre connexion ou l'URL.");
+      throw Exception(
+        "Impossible de joindre le serveur. Vérifiez votre connexion ou l'URL.",
+      );
     } on http.ClientException catch (e) {
       throw Exception("Erreur HTTP : $e");
     } catch (e) {
@@ -170,22 +230,23 @@ class UserNetworkServiceImpl implements UserNetworkService {
     }
   }
 
-
-
   void _handleError(http.Response response) {
     final body = jsonDecode(response.body);
     final message = body['message'] ?? "Une erreur est survenue";
 
     switch (response.statusCode) {
-      case 400: throw Exception("Requête malformée.");
+      case 400:
+        throw Exception("Requête malformée.");
       case 422:
         final errors = body['errors'];
         throw Exception(errors != null ? errors.toString() : message);
-      case 500: throw Exception("Erreur serveur.");
-      default: throw Exception(message);
+      case 500:
+        throw Exception("Erreur serveur.");
+      default:
+        throw Exception(message);
     }
   }
-  
+
   @override
   Future<User?> getUserProfile(String token) {
     // TODO: implement getUserProfile
@@ -194,10 +255,12 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   Future<String> getAddressFromLatLng(double lat, double lon) async {
     final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json");
-    final response = await http.get(url, headers: {
-      "User-Agent": "moto_taxi_digital_mobile"
-    });
+      "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json",
+    );
+    final response = await http.get(
+      url,
+      headers: {"User-Agent": "moto_taxi_digital_mobile"},
+    );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -209,10 +272,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   @override
   Future<List<SearchResult>> searchAddresses(
-      String query, {
-        LatLng? userLocation,
-      }) async {
-
+    String query, {
+    LatLng? userLocation,
+  }) async {
     if (query.trim().length < 3) return [];
 
     final encoded = Uri.encodeQueryComponent(query);
@@ -232,10 +294,12 @@ class UserNetworkServiceImpl implements UserNetworkService {
         "&bounded=1";
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {"User-Agent": "moto_taxi_app (ephraimmonga5@gmail.com)"},
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {"User-Agent": "moto_taxi_app (ephraimmonga5@gmail.com)"},
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
@@ -243,28 +307,33 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
         final Distance distance = Distance();
 
-        List<SearchResult> results = data.map((item) {
-          final lat = double.tryParse(item['lat'].toString());
-          final lon = double.tryParse(item['lon'].toString());
+        List<SearchResult> results = data
+            .map((item) {
+              final lat = double.tryParse(item['lat'].toString());
+              final lon = double.tryParse(item['lon'].toString());
 
-          if (lat == null || lon == null) return null;
+              if (lat == null || lon == null) return null;
 
-          double? dist;
-          if (userLocation != null) {
-            dist = distance(userLocation, LatLng(lat, lon));
-          }
+              double? dist;
+              if (userLocation != null) {
+                dist = distance(userLocation, LatLng(lat, lon));
+              }
 
-          return SearchResult(
-            location: LatLng(lat, lon),
-            displayName: item['display_name'] ?? "Lieu inconnu",
-            distanceFromUser: dist,
-          );
-        }).whereType<SearchResult>().toList();
+              return SearchResult(
+                location: LatLng(lat, lon),
+                displayName: item['display_name'] ?? "Lieu inconnu",
+                distanceFromUser: dist,
+              );
+            })
+            .whereType<SearchResult>()
+            .toList();
 
         if (userLocation != null) {
-          results.sort((a, b) =>
-              (a.distanceFromUser ?? double.infinity)
-                  .compareTo(b.distanceFromUser ?? double.infinity));
+          results.sort(
+            (a, b) => (a.distanceFromUser ?? double.infinity).compareTo(
+              b.distanceFromUser ?? double.infinity,
+            ),
+          );
         }
 
         return results;
@@ -277,7 +346,6 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
     return [];
   }
-
 
   @override
   Future<Wallet> getWallet() async {
@@ -292,7 +360,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
         print("Réponse Wallet : $data");
         return Wallet.fromJson(data);
       } else {
-        throw Exception("Impossible de récupérer le solde (${response.statusCode})");
+        throw Exception(
+          "Impossible de récupérer le solde (${response.statusCode})",
+        );
       }
     } catch (e) {
       throw Exception("Erreur Wallet: $e");

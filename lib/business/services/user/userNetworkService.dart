@@ -9,6 +9,12 @@ import '../../models/wallet/wallet.dart';
 
 abstract class UserNetworkService {
   Future<User?> login(Authentication authentication);
+  Future<void> requestPasswordReset(String email);
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+  });
   Future<bool> verifyOtp(VerifyOtp verifyOtp);
   Future<User?> registerUser(
     User user, {

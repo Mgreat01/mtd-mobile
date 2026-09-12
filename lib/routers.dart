@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/pages/404/notFound.dart';
 import 'package:moto_taxi_digital_mobile/pages/home/homePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/login/passwordRecoveryPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/accountValidated/avPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/documentPage/kycPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
@@ -52,7 +53,9 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       path: "/public/register",
       name: 'register_page',
       builder: (ctx, state) {
-        final data = state.extra as Map<String, dynamic>? ?? {'role': 'passenger', 'phone': ''};
+        final data =
+            state.extra as Map<String, dynamic>? ??
+            {'role': 'passenger', 'phone': ''};
         return RegisterPage(
           role: data['role'] ?? 'passenger',
           phone: data['phone'] ?? '',
@@ -72,6 +75,17 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       builder: (ctx, state) => const LoginPage(),
     ),
     GoRoute(
+      path: '/public/forgot-password',
+      name: 'forgot_password',
+      builder: (ctx, state) => const ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: '/public/reset-password',
+      name: 'reset_password',
+      builder: (ctx, state) =>
+          ResetPasswordPage(initialEmail: state.extra as String?),
+    ),
+    GoRoute(
       path: "/public/kyc",
       name: 'kyc_page',
       builder: (ctx, state) => const KycPage(),
@@ -80,43 +94,43 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       path: "/public/AccountValidatedPage",
       name: 'AccountValidatedPage',
       builder: (ctx, state) => const AccountValidatedPage(),
-    )
+    ),
   ];
 
   return GoRouter(
     navigatorKey: navigatorKey,
     debugLogDiagnostics: true,
     initialLocation: "/public/intro",
-      redirect: (context, state) {
-        final appState = ref.watch(appCtrlProvider);
-        final user = appState.user;
-        final isLoading = user == null && appState.error == null;
+    redirect: (context, state) {
+      final appState = ref.watch(appCtrlProvider);
+      final user = appState.user;
+      final isLoading = user == null && appState.error == null;
 
-        if (isLoading) return null;
+      if (isLoading) return null;
 
-        if (user != null) {
-          final publicAuthPages = [
-            '/public/login',
-            '/public/register',
-            '/public/pNumber',
-            '/public/otp',
-          ];
+      if (user != null) {
+        final publicAuthPages = [
+          '/public/login',
+          '/public/register',
+          '/public/pNumber',
+          '/public/otp',
+        ];
 
-          if (publicAuthPages.contains(state.matchedLocation)) {
-            return '/app/introUser';
-          }
-          return null;
+        if (publicAuthPages.contains(state.matchedLocation)) {
+          return '/app/introUser';
         }
-
-        if (user == null) {
-          if (state.matchedLocation.startsWith('/app/')) {
-            return '/public/login';
-          }
-          return null;
-        }
-
         return null;
-      },
+      }
+
+      if (user == null) {
+        if (state.matchedLocation.startsWith('/app/')) {
+          return '/public/login';
+        }
+        return null;
+      }
+
+      return null;
+    },
 
     routes: [...noAuthRoutes, ...authRoutes],
     errorBuilder: (context, state) => const NotFoundPage(),

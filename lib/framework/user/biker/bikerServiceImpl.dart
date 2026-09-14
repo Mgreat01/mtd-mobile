@@ -253,8 +253,18 @@ class BikerServiceImpl implements BikerService {
         headers: _headers(_token),
       );
       if (response.statusCode != 200) {
+        // Le backend hÃ©bergÃ© renvoie 404 pour les anciens comptes ayant le
+        // rÃ´le biker sans enregistrement dans `bikers`. Ces comptes ne peuvent
+        // pas avoir de course qui leur est attribuÃ©e : pour l'interface, cela
+        // correspond Ã  une liste vide et non Ã  une erreur de chargement.
+        if (response.statusCode == 404 && _isMissingBikerProfile(response)) {
+          await _cache.writeJson(cacheKey, const [], ttl: ttl);
+          return const [];
+        }
+        final message = _responseMessage(response);
         throw Exception(
-          'Impossible de charger les courses (${response.statusCode})',
+          message ??
+              'Impossible de charger les courses (${response.statusCode})',
         );
       }
       final data = jsonDecode(response.body);
@@ -287,6 +297,30 @@ class BikerServiceImpl implements BikerService {
       .whereType<Map>()
       .map((item) => AppNotification.fromJson(Map<String, dynamic>.from(item)))
       .toList();
+
+  String? _responseMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map) {
+        final message = body['message'] ?? body['error'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString();
+        }
+      }
+    } catch (_) {
+      // Some reverse proxies return a non-JSON error page. The status code is
+      // then the only safe diagnostic to expose to the caller.
+    }
+    return null;
+  }
+
+  bool _isMissingBikerProfile(http.Response response) {
+    final message = _responseMessage(response)?.toLowerCase();
+    return message != null &&
+        (message.contains('biker profile') ||
+            message.contains('profil biker') ||
+            message.contains('profil chauffeur'));
+  }
 
   Future<RaceRouteModel?> getBikerPassengerTrack({
     required int raceId,

@@ -41,19 +41,33 @@ class BikerHistoryController extends StateNotifier<BikerHistoryState> {
   Future<void> fetchRaces() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final results = await Future.wait([
-        _bikerService.getCourses(),
-        _bikerService.getBikerRaces(),
-      ]);
+      // L'historique attribué au biker est la donnée principale de cette page.
+      // Les nouvelles demandes restent facultatives : une erreur sur ce flux ne
+      // doit pas cacher les courses déjà affectées au compte connecté.
+      final bikerRaces = await _bikerService.getBikerRaces();
+      List<Race> availableRaces = const [];
+      String? availableRacesError;
+
+      try {
+        availableRaces = await _bikerService.getCourses();
+      } catch (error) {
+        availableRacesError = error.toString();
+      }
+
       final racesById = <int, Race>{};
-      for (final result in results) {
-        for (final race in result) {
-          racesById[race.id] = race;
-        }
+      for (final race in [...availableRaces, ...bikerRaces]) {
+        racesById[race.id] = race;
       }
       final races = racesById.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      state = state.copyWith(allRaces: races, isLoading: false);
+      state = state.copyWith(
+        allRaces: races,
+        isLoading: false,
+        errorMessage: availableRacesError == null
+            ? null
+            : 'Les nouvelles demandes sont temporairement indisponibles : '
+                  '$availableRacesError',
+      );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,

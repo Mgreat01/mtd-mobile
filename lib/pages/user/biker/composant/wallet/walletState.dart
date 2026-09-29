@@ -15,11 +15,12 @@ class WalletState {
     bool? isLoading,
     Wallet? wallet,
     String? errorMessage,
+    bool clearError = false,
   }) {
     return WalletState(
       isLoading: isLoading ?? this.isLoading,
       wallet: wallet ?? this.wallet,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
 }

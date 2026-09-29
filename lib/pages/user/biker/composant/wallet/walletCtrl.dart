@@ -10,11 +10,13 @@ class WalletController extends StateNotifier<WalletState> {
   }
 
   Future<void> fetchWalletBalance() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final walletData = await _networkService.getWallet();
+      if (!mounted) return;
       state = state.copyWith(wallet: walletData, isLoading: false);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString().replaceAll("Exception: ", ""),
@@ -31,6 +33,6 @@ class WalletController extends StateNotifier<WalletState> {
   }
 }
 
-final walletControllerProvider = StateNotifierProvider<WalletController, WalletState>((ref) {
+final walletControllerProvider = StateNotifierProvider.autoDispose<WalletController, WalletState>((ref) {
   return WalletController(UserNetworkServiceImpl());
 });

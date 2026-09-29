@@ -7,65 +7,59 @@ import 'package:moto_taxi_digital_mobile/business/services/user/owner/ownerServi
 import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 
 class OwnerServiceImpl implements OwnerService {
-
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token');
 
-  Map<String, String> _headers(String token) => {
-    'Content-Type': 'application/json',
+  Map<String, String> get _headers => {
     'Accept': 'application/json',
-    'Authorization': 'Bearer $token',
+    'Authorization': 'Bearer ${GetStorage().read<String>('token') ?? ''}',
   };
-  
-  @override
-  Future<Bike> getAssignatedBike() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/bikes/assigned'),
-      headers: _headers(tokens)
-    );
 
-    final data = jsonDecode(response.body);
-    return data;
+  Future<dynamic> _get(String endpoint) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/$endpoint'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Impossible de charger les motos (${response.statusCode})',
+      );
+    }
+    return jsonDecode(response.body);
   }
 
-  @override
-  Future<List<Bike>> getAvailableBike() async {
-    final response = await http.get(
-        Uri.parse('$baseUrl/bikes/available'),
-        headers: _headers(tokens)
-    );
-
-    final data = jsonDecode(response.body);
-    return (data['data'] as List)
-        .map((e) => Bike.fromJson(e))
+  List<Bike> _bikesFromJson(dynamic data) {
+    final items = data is List
+        ? data
+        : data is Map
+        ? data['data']
+        : null;
+    if (items is! List) {
+      throw const FormatException('Liste de motos absente de la réponse');
+    }
+    return items
+        .whereType<Map>()
+        .map((item) => Bike.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
   @override
-  Future<List<Bike>> getByOwner() async {
-    final response = await http.get(
-        Uri.parse('$baseUrl/bikes/owners'),
-        headers: _headers(tokens)
-    );
+  Future<List<Bike>> getAssignatedBike() async =>
+      (await getByOwner()).where((bike) => bike.bikerId != null).toList();
 
-    final data = jsonDecode(response.body);
-    print(data);
-    return (data as List)
-        .map((e) => Bike.fromJson(e))
-        .toList();
-  }
+  @override
+  Future<List<Bike>> getAvailableBike() async =>
+      _bikesFromJson(await _get('bikes/available'));
+
+  @override
+  Future<List<Bike>> getByOwner() async =>
+      _bikesFromJson(await _get('bikes/owners'));
 
   @override
   Future<Map<String, dynamic>> stat() async {
-    final response = await http.get(
-        Uri.parse('$baseUrl/bikes/stats'),
-        headers: _headers(tokens)
-    );
-
-    final data = jsonDecode(response.body);
-    print(data);
-    return data as Map<String, dynamic>;
+    final data = await _get('bikes/stats');
+    if (data is! Map) {
+      throw const FormatException('Statistiques des motos invalides');
+    }
+    return Map<String, dynamic>.from(data);
   }
-  
-  
 }

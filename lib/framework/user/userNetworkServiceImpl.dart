@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
@@ -14,7 +13,7 @@ import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 
 class UserNetworkServiceImpl implements UserNetworkService {
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token') ?? '';
+  String get tokens => GetStorage().read<String>('token') ?? '';
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -34,9 +33,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
         body: data,
       );
 
-      print("Requête envoyée à : $url");
-      print("Status code : ${response.statusCode}");
-      print("Réponse brute : ${response.body}");
+      // La réponse de connexion contient un jeton : ne pas l'imprimer.
 
       switch (response.statusCode) {
         case 200:
@@ -66,7 +63,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
       }
     } on http.ClientException catch (e) {
       throw Exception("Problème réseau : $e");
-    } on FormatException catch (e) {
+    } on FormatException {
       throw Exception("Réponse du serveur invalide.");
     } catch (e) {
       throw Exception(e.toString());
@@ -136,7 +133,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
   Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/verify-otpMobile'),
+        Uri.parse('$baseUrl/api/verify-otp'),
         headers: _headers,
         body: jsonEncode(verifyOtp.toJson()),
       );
@@ -160,7 +157,6 @@ class UserNetworkServiceImpl implements UserNetworkService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/register');
-      print(" Tentative d'envoi à : $url");
 
       var request = http.MultipartRequest('POST', url);
 
@@ -171,7 +167,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
       final fields = user.toMultipartFields();
       fields.forEach((key, value) {
-        request.fields[key] = value?.toString() ?? "";
+        request.fields[key] = value.toString();
       });
 
       File? fileToUpload;
@@ -186,13 +182,11 @@ class UserNetworkServiceImpl implements UserNetworkService {
         request.files.add(
           await http.MultipartFile.fromPath('photo', fileToUpload.path),
         );
-        print(" Photo de profil ajoutée : ${fileToUpload.path}");
       }
 
       Future<void> addFileIfValid(String key, File? file) async {
         if (file != null && await file.exists()) {
           request.files.add(await http.MultipartFile.fromPath(key, file.path));
-          print("Fichier ajouté [$key] : ${file.path}");
         }
       }
 
@@ -200,14 +194,11 @@ class UserNetworkServiceImpl implements UserNetworkService {
       await addFileIfValid('registration_card', registrationCard);
       await addFileIfValid('business_license', businessLicense);
 
-      print(" Envoi de la requête en cours...");
       var streamedResponse = await request.send().timeout(
         const Duration(seconds: 40),
       );
       var response = await http.Response.fromStream(streamedResponse);
 
-      print("Statut Serveur : ${response.statusCode}");
-      print(" Réponse Serveur : ${response.body}");
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -224,33 +215,27 @@ class UserNetworkServiceImpl implements UserNetworkService {
       );
     } on http.ClientException catch (e) {
       throw Exception("Erreur HTTP : $e");
-    } catch (e) {
-      print(" Erreur critique dans registerUser : $e");
-      rethrow;
-    }
-  }
-
-  void _handleError(http.Response response) {
-    final body = jsonDecode(response.body);
-    final message = body['message'] ?? "Une erreur est survenue";
-
-    switch (response.statusCode) {
-      case 400:
-        throw Exception("Requête malformée.");
-      case 422:
-        final errors = body['errors'];
-        throw Exception(errors != null ? errors.toString() : message);
-      case 500:
-        throw Exception("Erreur serveur.");
-      default:
-        throw Exception(message);
     }
   }
 
   @override
-  Future<User?> getUserProfile(String token) {
-    // TODO: implement getUserProfile
-    throw UnimplementedError();
+  Future<User?> getUserProfile(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/profile'),
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_responseMessage(response));
+    }
+    final body = jsonDecode(response.body);
+    final data = body is Map ? body['data'] : null;
+    if (data is! Map) {
+      throw const FormatException('Profil utilisateur absent de la réponse');
+    }
+    return User.fromJson(Map<String, dynamic>.from(data));
   }
 
   Future<String> getAddressFromLatLng(double lat, double lon) async {

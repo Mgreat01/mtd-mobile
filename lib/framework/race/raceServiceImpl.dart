@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
@@ -8,7 +7,7 @@ import 'package:moto_taxi_digital_mobile/utils/appConfig.dart';
 
 class RaceServiceImpl implements RaceService {
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token');
+  String get tokens => GetStorage().read<String>('token') ?? '';
 
   Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',
@@ -57,23 +56,15 @@ class RaceServiceImpl implements RaceService {
       headers: _headers(tokens),
       body: jsonEncode(race.toJson()),
     );
-    debugPrint("bla bla ${response.body}");
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 201 || response.statusCode == 200) {
-      print("Course créée avec succès : ${data['id']}");
       final bodyy = jsonDecode(response.body);
 
       final race = Race.fromJson(bodyy["race"]);
 
       return race;
     } else {
-      print(
-        "echec de la course : ${response.body} et la status ${response.statusCode}",
-      );
-      debugPrint(
-        "echec de la course : ${response.body} et la status ${response.statusCode}",
-      );
       throw Exception(
         data['message'] ??
             data['error'] ??
@@ -117,14 +108,20 @@ class RaceServiceImpl implements RaceService {
       Uri.parse('$baseUrl/api/races/for-current-user'),
       headers: _headers(tokens),
     );
-    final List<dynamic> data = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de charger votre historique (${response.statusCode})');
+    }
+    final data = jsonDecode(response.body);
+    if (data is! List) {
+      throw const FormatException('Historique des courses invalide');
+    }
     return data.map((json) => Race.fromJson(json)).toList();
   }
 
   @override
   Future<Race> updateRaceBiker(int id) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/api/bikers/validations/${id}'),
+      Uri.parse('$baseUrl/api/bikers/validations/$id'),
       headers: _headers(tokens),
       //body: jsonEncode(id),
     );
@@ -132,12 +129,8 @@ class RaceServiceImpl implements RaceService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      print(
-        "Course mise à jour avec succès : ${data['race']['id']} avec biker_id ${data['biker_id']}",
-      );
       return Race.fromJson(data['race']); // on parse uniquement l'objet race
     } else {
-      print("Échec de la mise à jour : ${response.body}");
       throw Exception(
         data['message'] ??
             data['error'] ??
@@ -157,7 +150,6 @@ class RaceServiceImpl implements RaceService {
     if (response.statusCode == 200) {
       return RaceRouteModel.fromJson(jsonDecode(response.body));
     }
-    debugPrint("pro récupérer la route " + response.body);
     throw Exception("Impossible de récupérer la route");
   }
 

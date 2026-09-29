@@ -6,9 +6,8 @@ import '../../../business/services/bike/bikeService.dart';
 import '../../../utils/appConfig.dart';
 
 class BikeServiceImpl implements BikeService {
-
   String get baseUrl => AppConfig.apiUrl;
-  String tokens = GetStorage().read('token');
+  String get tokens => GetStorage().read<String>('token') ?? '';
 
   Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',
@@ -20,19 +19,18 @@ class BikeServiceImpl implements BikeService {
   Future<List<Bike>> getAllBikes() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikes'),
+      headers: _headers(tokens),
     );
 
     final data = jsonDecode(response.body);
-    return (data as List)
-        .map((e) => Bike.fromJson(e))
-        .toList();
+    return (data as List).map((e) => Bike.fromJson(e)).toList();
   }
 
   @override
   Future<Bike> createBike(Bike bike) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/bikes'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
       body: jsonEncode(bike.toJson()),
     );
 
@@ -43,7 +41,7 @@ class BikeServiceImpl implements BikeService {
   Future<Bike> updateBike(int id, Bike bike) async {
     final response = await http.put(
       Uri.parse('$baseUrl/api/bikes/$id'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
       body: jsonEncode(bike.toJson()),
     );
 
@@ -54,6 +52,7 @@ class BikeServiceImpl implements BikeService {
   Future<void> deleteBike(int id) async {
     await http.delete(
       Uri.parse('$baseUrl/api/bikes/$id'),
+      headers: _headers(tokens),
     );
   }
 
@@ -61,9 +60,8 @@ class BikeServiceImpl implements BikeService {
   Future<Bike> getBikeById(int id) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikes/$id'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
-    print(response.body);
     return Bike.fromJson(jsonDecode(response.body));
   }
 
@@ -71,13 +69,11 @@ class BikeServiceImpl implements BikeService {
   Future<List<Bike>> getBikesByOwner(int ownerId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikes/owner/$ownerId'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
 
     final data = jsonDecode(response.body);
-    return (data as List)
-        .map((e) => Bike.fromJson(e))
-        .toList();
+    return (data as List).map((e) => Bike.fromJson(e)).toList();
   }
 
   @override
@@ -85,7 +81,7 @@ class BikeServiceImpl implements BikeService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/bikes/biker/$bikerId'),
-        headers:  _headers(tokens),
+        headers: _headers(tokens),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -93,15 +89,12 @@ class BikeServiceImpl implements BikeService {
         // L'API retourne directement un tableau, pas besoin de accéder à data['data']
         final List<dynamic> jsonList = data is List ? data : [];
 
-        print('Bikes récupérées: ${jsonList.length}');
 
         return jsonList.map((json) => Bike.fromJson(json)).toList();
       } else {
-        print('Erreur HTTP: ${response.statusCode} - ${response.body}');
         return [];
       }
     } catch (e) {
-      print('Exception lors de la récupération des bikes: $e');
       return [];
     }
   }
@@ -110,22 +103,19 @@ class BikeServiceImpl implements BikeService {
   Future<List<Bike>> getAvailableBikes() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikes/available'),
+      headers: _headers(tokens),
     );
 
     final data = jsonDecode(response.body);
-    print(data);
-    return (data as List)
-        .map((e) => Bike.fromJson(e))
-        .toList();
+    return (data as List).map((e) => Bike.fromJson(e)).toList();
   }
 
   @override
   Future<Map<String, dynamic>> getStats() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/bikes/stats'),
-      headers:  _headers(tokens),
+      headers: _headers(tokens),
     );
-    print(response.body);
     return jsonDecode(response.body);
   }
 }

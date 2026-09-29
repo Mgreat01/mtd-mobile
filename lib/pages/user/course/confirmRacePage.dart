@@ -11,39 +11,40 @@ class ConfirmRacePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
-    ref.listen<ConfirmRaceState>(
-      confirmRaceControllerProvider(params),
-          (previous, next) {
-        if (!next.isLoading && next.errorMessage == null) {
-          if (context.mounted) {
-            Navigator.pop(context);
-          }
+    ref.listen<ConfirmRaceState>(confirmRaceControllerProvider(params), (
+      previous,
+      next,
+    ) {
+      if (!next.isLoading && next.errorMessage == null) {
+        if (context.mounted) {
+          Navigator.pop(context);
         }
-        if (next.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(next.errorMessage!)),
-          );
-        }
-      },
-    );
-    final userState =
-    ref.watch(userHomeControllerProvider);
+      }
+      if (next.errorMessage != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.errorMessage!)));
+      }
+    });
+    final userState = ref.watch(userHomeControllerProvider);
 
-    final notifier =
-    ref.read(userHomeControllerProvider.notifier);
-    final theme = Theme.of(context);
-
-
+    final notifier = ref.read(userHomeControllerProvider.notifier);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text("Détails de la course", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Détails de la course",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -56,13 +57,18 @@ class ConfirmRacePage extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
               ),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: Colors.green.withOpacity(0.1),
+                    backgroundColor: Colors.green.withValues(alpha: 0.1),
                     child: Image.asset('assets/images/moto.png', width: 40),
                   ),
                   const SizedBox(width: 15),
@@ -71,9 +77,17 @@ class ConfirmRacePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                            params.selectedBiker?.name ?? "Motard en cours d'attribution",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        const Text("Motard sélectionné", style: TextStyle(color: Colors.grey)),
+                          params.selectedBiker?.name ??
+                              "Motard en cours d'attribution",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const Text(
+                          "Motard sélectionné",
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -87,16 +101,38 @@ class ConfirmRacePage extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  _buildRouteItem(Icons.circle, Colors.green, "Point de départ", params.startAddress),
+                  _buildRouteItem(
+                    Icons.circle,
+                    Colors.green,
+                    "Point de départ",
+                    params.startAddress,
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(left: 11),
-                    child: Align(alignment: Alignment.centerLeft, child: Container(width: 2, height: 30, color: Colors.grey[200])),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 2,
+                        height: 30,
+                        color: Colors.grey[200],
+                      ),
+                    ),
                   ),
-                  _buildRouteItem(Icons.location_on, Colors.red, "Destination", params.destinationName),
+                  _buildRouteItem(
+                    Icons.location_on,
+                    Colors.red,
+                    "Destination",
+                    params.destinationName,
+                  ),
                 ],
               ),
             ),
@@ -130,16 +166,26 @@ class ConfirmRacePage extends ConsumerWidget {
                 onPressed: userState.isLoading
                     ? null
                     : () async {
+                        final created = await notifier.confirmBooking(
+                          destinationName: params.destinationName,
+                          priceListId: params.priceListId,
+                        );
 
-                  await notifier.confirmBooking(
-                    destinationName: params.destinationName,
-                    priceListId: params.priceListId ?? 1,
-                  );
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                },
+                        if (context.mounted && created) {
+                          Navigator.pop(context);
+                        } else if (context.mounted) {
+                          final error = ref
+                              .read(userHomeControllerProvider)
+                              .errorMessage;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                error ?? 'Impossible de créer la course.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF008E53),
@@ -151,21 +197,21 @@ class ConfirmRacePage extends ConsumerWidget {
 
                 child: userState.isLoading
                     ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text(
-                  "CONFIRMER LA COURSE",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              )
+                        "CONFIRMER LA COURSE",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
             ),
           ],
         ),
@@ -173,7 +219,12 @@ class ConfirmRacePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildRouteItem(IconData icon, Color color, String title, String value) {
+  Widget _buildRouteItem(
+    IconData icon,
+    Color color,
+    String title,
+    String value,
+  ) {
     return Row(
       children: [
         Icon(icon, color: color, size: 16),
@@ -182,11 +233,22 @@ class ConfirmRacePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -195,8 +257,21 @@ class ConfirmRacePage extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal, fontSize: isTotal ? 16 : 14)),
-        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isTotal ? 18 : 14, color: isTotal ? const Color(0xFF008E53) : Colors.black)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            fontSize: isTotal ? 16 : 14,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: isTotal ? 18 : 14,
+            color: isTotal ? const Color(0xFF008E53) : Colors.black,
+          ),
+        ),
       ],
     );
   }

@@ -1,15 +1,12 @@
 class VerifyOtp {
-  String? email;
-  String? otp;
+  final String email;
+  final String otp;
 
-  VerifyOtp({
-    this.email,
-    this.otp,
-  });
+  VerifyOtp({required this.email, required this.otp});
 
   factory VerifyOtp.fromJson(Map<String, dynamic> json) => VerifyOtp(
-    email: json["email"],
-    otp: json["opt"],
+    email: json["email"] ?? '',
+    otp: json["otp"] ?? '',
   );
 
   Map<String, dynamic> toJson() => {

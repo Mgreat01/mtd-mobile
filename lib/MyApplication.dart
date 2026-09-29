@@ -1,6 +1,6 @@
-// lib/MyApplication.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/providers/themeProvider.dart';
 import 'package:moto_taxi_digital_mobile/routers.dart';
 import 'package:moto_taxi_digital_mobile/utils/themes/appTheme.dart';
@@ -13,24 +13,27 @@ class MyApplication extends ConsumerStatefulWidget {
 }
 
 class _MyApplicationState extends ConsumerState<MyApplication> {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var ctrl = ref.read(loginControllerProvider.notifier);
+      ctrl.getLocalUser();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final routerConfig = ref.watch(routerConfigProvider);
-    final themeMode = ref.watch(themeProvider);
-
-    // Sélectionne le ThemeData en fonction du mode
-    final ThemeData currentTheme = themeMode == AppThemeMode.light
-        ? AppTheme.lightTheme
-        : AppTheme.darkTheme;
+    final themeState = ref.watch(themeProvider);
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      // theme = ThemeData (obligatoire)
-      theme: currentTheme,
-      // darkTheme = ThemeData (obligatoire si tu veux utiliser ThemeMode.dark)
+      title: 'Moto Taxi Digital',
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      // themeMode = ThemeMode (contrôle quel thème activer)
-      themeMode: themeMode == AppThemeMode.light
+      themeMode: themeState == AppThemeMode.light
           ? ThemeMode.light
           : ThemeMode.dark,
       routerConfig: routerConfig,

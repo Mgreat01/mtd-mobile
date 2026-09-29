@@ -23,7 +23,7 @@ class _IntroPageState extends ConsumerState<IntroPage> {
       ctrl.getUser();
       //
       Future.delayed(Duration(seconds: 2), () {
-        navigation.goNamed('home_page');
+        navigation.goNamed('login_page');
       });
     });
   }

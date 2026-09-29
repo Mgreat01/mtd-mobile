@@ -1,171 +1,178 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:moto_taxi_digital_mobile/pages/register/accountValidated/avPage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/registerCtrl.dart';
 
-class OTPScreen extends StatelessWidget {
-  const OTPScreen({super.key});
+class OTPPage extends ConsumerStatefulWidget {
+  final String email;
+  final String role;
+
+  const OTPPage({super.key, required this.email, required this.role});
+
+  @override
+  ConsumerState<OTPPage> createState() => _OTPPageState();
+}
+
+class _OTPPageState extends ConsumerState<OTPPage> {
+  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _verify() async {
+    String otpCode = _controllers.map((c) => c.text).join();
+
+    if (otpCode.length < 6) {
+      setState(() => _errorMessage = "Veuillez saisir les 6 chiffres");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final verifyData = VerifyOtp(email: widget.email, otp: otpCode);
+      final success = await ref.read(registerControlProvider.notifier).verifyAccount(verifyData);
+
+      if (success && mounted) {
+        if (widget.role == 'passenger') {
+          context.go('/public/login');
+        } else {
+          context.go('/public/AccountValidatedPage');
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Compte vérifié. En attente de validation administrative."))
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      // Pas d'AppBar pour correspondre à la capture, on utilise le SafeArea
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Bouton de retour
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
+          padding: const EdgeInsets.symmetric(horizontal: 30.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                'Vérification du code',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
                 ),
-
-                const SizedBox(height: 30),
-
-                // Titre principal
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Vérification du code',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Un code a été envoyé à ${widget.email}',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
                 ),
+              ),
+              const SizedBox(height: 40),
 
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(6, (index) => _buildOtpBox(index, theme)),
+              ),
+
+              if (_errorMessage != null) ...[
                 const SizedBox(height: 20),
-
-                // Texte descriptif
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Un code à 6 chiffres a été envoyé au',
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.w500),
                 ),
-
-                const SizedBox(height: 5),
-
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '+243 XXX XXX XXX',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                ),
-
-                const SizedBox(height: 50),
-
-                // Champs de saisie OTP
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) => SizedBox(
-                    width: 45,
-                    child: TextField(
-                      textAlign: TextAlign.center,
-                      maxLength: 1,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      style: const TextStyle(fontSize: 24),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        // Style du champ inspiré de la capture
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: const BorderSide(color: Colors.grey, width: 1.0),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: const BorderSide(color: Color(0xFF1E8142), width: 2.0),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      onChanged: (value) {
-                        // Déplacer le focus automatiquement au champ suivant
-                        if (value.length == 1 && index < 5) {
-                          FocusScope.of(context).nextFocus();
-                        }
-                        // Déplacer le focus automatiquement au champ précédent lors de l'effacement
-                        if (value.isEmpty && index > 0) {
-                          FocusScope.of(context).previousFocus();
-                        }
-                      },
-                    ),
-                  )),
-                ),
-
-                const SizedBox(height: 50),
-
-                // Bouton "Vérifier" (Vert)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AccountValidatedScreen()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E8142), // Une nuance de vert foncé
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                        'Vérifier',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // Liens de renvoi
-                const Text(
-                  'Tu n\'as pas reçu le code ?',
-                  style: TextStyle(color: Colors.black54, fontSize: 16),
-                ),
-
-                const SizedBox(height: 10),
-
-                TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero, // Supprimer le padding par défaut
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Renvoyer le code',
-                    style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 100), // Espace pour pousser l'élément de sécurité vers le bas
-
-                // Texte de sécurité
-                const Text(
-                  'Vérification sécurisé par OTP',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-
-                const SizedBox(height: 30),
               ],
-            ),
+
+              const SizedBox(height: 50),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _verify,
+                  style: theme.elevatedButtonTheme.style?.copyWith(
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.disabled)) return colorScheme.outline.withOpacity(0.3);
+                      return const Color(0xFF1E8142);
+                    }),
+                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator(color: colorScheme.onPrimary)
+                      : const Text(
+                    'Vérifier',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOtpBox(int index, ThemeData theme) {
+    return SizedBox(
+      width: 45,
+      child: TextField(
+        controller: _controllers[index],
+        textAlign: TextAlign.center,
+        maxLength: 1,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          contentPadding: EdgeInsets.zero,
+          filled: true,
+          fillColor: theme.inputDecorationTheme.fillColor,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.5)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF1E8142), width: 2),
+          ),
+        ),
+        onChanged: (value) {
+          if (value.length == 1 && index < 5) FocusScope.of(context).nextFocus();
+          if (value.isEmpty && index > 0) FocusScope.of(context).previousFocus();
+        },
       ),
     );
   }

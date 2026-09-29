@@ -4,22 +4,23 @@ import 'package:moto_taxi_digital_mobile/business/services/user/owner/ownerServi
 import 'package:moto_taxi_digital_mobile/main.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerState.dart';
 
-
-
 class OwnerController extends StateNotifier<OwnerState> {
-  final OwnerService _ownerService = getIt.get<OwnerService>();
+  final OwnerService _ownerService;
 
-  OwnerController() : super(OwnerState()) {
+  OwnerController({OwnerService? service})
+    : _ownerService = service ?? getIt.get<OwnerService>(),
+      super(OwnerState()) {
     loadOwnerData();
   }
 
   Future<void> loadOwnerData() async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final results = await Future.wait([
         _ownerService.stat(),
         _ownerService.getByOwner(),
       ]);
+      if (!mounted) return;
 
       state = state.copyWith(
         stats: results[0] as Map<String, dynamic>,
@@ -27,10 +28,15 @@ class OwnerController extends StateNotifier<OwnerState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false);
-      print("Erreur OwnerController: $e");
+      if (!mounted) return;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 }
 
-final ownerProvider = StateNotifierProvider<OwnerController, OwnerState>((ref) => OwnerController());
+final ownerProvider = StateNotifierProvider.autoDispose<OwnerController, OwnerState>(
+  (ref) => OwnerController(),
+);

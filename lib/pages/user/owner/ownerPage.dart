@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerCtrl.dart';
 
-
 class OwnerHomePage extends ConsumerWidget {
   const OwnerHomePage({super.key});
 
@@ -13,35 +12,82 @@ class OwnerHomePage extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      body: state.isLoading
+      body: state.isLoading && state.bikes.isEmpty && state.stats.isEmpty
           ? const Center(child: CircularProgressIndicator())
+          : state.errorMessage != null &&
+                state.bikes.isEmpty &&
+                state.stats.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(state.errorMessage!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () =>
+                          ref.read(ownerProvider.notifier).loadOwnerData(),
+                      child: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : ListView(
-        padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
-        children: [
-          // --- SECTION STATISTIQUES (Cartes de couleur) ---
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 15,
-            mainAxisSpacing: 15,
-            childAspectRatio: 1.5,
-            children: [
-              _statCard("Motos actives", state.stats['assigned_bikes']?.toString() ?? "0", Icons.motorcycle, Colors.green),
-              _statCard("Disponibles", state.stats['available_bikes']?.toString() ?? "0", Icons.vpn_key, Colors.blue),
-              _statCard("En maintenance", "0", Icons.build, Colors.orange),
-              _statCard("Hors service", "0", Icons.error_outline, Colors.red),
-            ],
-          ),
+              padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
+              children: [
+                // --- SECTION STATISTIQUES (Cartes de couleur) ---
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                  childAspectRatio: 1.5,
+                  children: [
+                    _statCard(
+                      "Motos actives",
+                      state.stats['assigned_bikes']?.toString() ?? "0",
+                      Icons.motorcycle,
+                      Colors.green,
+                    ),
+                    _statCard(
+                      "Disponibles",
+                      state.stats['available_bikes']?.toString() ?? "0",
+                      Icons.vpn_key,
+                      Colors.blue,
+                    ),
+                    _statCard(
+                      "En maintenance",
+                      "0",
+                      Icons.build,
+                      Colors.orange,
+                    ),
+                    _statCard(
+                      "Hors service",
+                      "0",
+                      Icons.error_outline,
+                      Colors.red,
+                    ),
+                  ],
+                ),
 
-          const SizedBox(height: 30),
-          Text("Activité des motos", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 15),
+                const SizedBox(height: 30),
+                Text(
+                  "Activité des motos",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 15),
 
-          // --- LISTE DES MOTOS ---
-          ...state.bikes.map((bike) => _buildBikeItem(bike, colorScheme)).toList(),
-        ],
-      ),
+                // --- LISTE DES MOTOS ---
+                ...state.bikes
+                    .map((bike) => _buildBikeItem(bike, colorScheme))
+                    .toList(),
+              ],
+            ),
     );
   }
 
@@ -59,8 +105,14 @@ class OwnerHomePage extends ConsumerWidget {
         children: [
           Icon(icon, color: color, size: 30),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -76,7 +128,10 @@ class OwnerHomePage extends ConsumerWidget {
         subtitle: Text("Matricule: ${bike.matricule}"),
         trailing: ElevatedButton(
           onPressed: () {},
-          style: ElevatedButton.styleFrom(backgroundColor: colorScheme.primary, foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colorScheme.primary,
+            foregroundColor: Colors.white,
+          ),
           child: const Text("Détails"),
         ),
       ),

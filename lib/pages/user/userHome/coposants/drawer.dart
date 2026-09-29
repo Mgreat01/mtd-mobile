@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
+import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/providers/themeProvider.dart';
@@ -16,9 +17,13 @@ class AppDrawer extends ConsumerWidget {
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeProvider);
     final themeNotifier = ref.read(themeProvider.notifier);
+    final userRole =
+        ref.watch(appCtrlProvider).user?.role ??
+        authState.user?.role ??
+        'passenger';
+    final historyIndex = _historyIndexForRole(userRole);
+    final walletIndex = _walletIndexForRole(userRole) ?? 2;
 
-    var data = authState.user;
-    print(data?.photo);
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.8,
       shape: const RoundedRectangleBorder(
@@ -36,20 +41,20 @@ class AppDrawer extends ConsumerWidget {
                 _buildDrawerItem(
                   icon: Icons.home_filled,
                   label: "Accueil",
-                  onTap: () =>
-                      ref.read(navigationIndexProvider.notifier).setIndex(0),
+                  onTap: () => _navigateToIndex(context, ref, 0),
                   theme: theme,
                 ),
+                if (historyIndex != null)
+                  _buildDrawerItem(
+                    icon: Icons.history,
+                    label: "Historique",
+                    onTap: () => _navigateToIndex(context, ref, historyIndex),
+                    theme: theme,
+                  ),
                 _buildDrawerItem(
-                  icon: Icons.history,
-                  label: "Historique",
-                  onTap: () {},
-                  theme: theme,
-                ),
-                _buildDrawerItem(
-                  icon: Icons.settings,
-                  label: "Paramètre",
-                  onTap: () {},
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: "Wallet",
+                  onTap: () => _navigateToIndex(context, ref, walletIndex),
                   theme: theme,
                 ),
                 const Padding(
@@ -92,6 +97,35 @@ class AppDrawer extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  int? _historyIndexForRole(String role) {
+    switch (role) {
+      case 'passenger':
+        return 1;
+      case 'biker':
+        return 2;
+      default:
+        return null;
+    }
+  }
+
+  int? _walletIndexForRole(String role) {
+    switch (role) {
+      case 'passenger':
+        return 2;
+      case 'biker':
+        return 3;
+      case 'owner':
+        return 2;
+      default:
+        return null;
+    }
+  }
+
+  void _navigateToIndex(BuildContext context, WidgetRef ref, int index) {
+    Navigator.of(context).pop();
+    ref.read(navigationIndexProvider.notifier).setIndex(index);
   }
 
   Widget _buildDrawerHeader(BuildContext context, ThemeData theme, User? user) {

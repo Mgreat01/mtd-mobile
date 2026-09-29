@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
+import 'package:moto_taxi_digital_mobile/business/services/race/raceService.dart';
+import 'package:moto_taxi_digital_mobile/main.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
-import 'package:moto_taxi_digital_mobile/pages/login/loginCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerState.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/courseBiker/BikerHistory.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/biker/composant/wallet/walletPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/composant_controller.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/drawer.dart';
@@ -75,11 +78,6 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
         },
       );
     }
-
-    var data = ref.watch(loginControllerProvider).user;
-    print("La valeur de user : $data");
-    print("le role de l'utilisateur : ${data?.role}");
-    print("L'utilisateur connecter ${data?.name} - ${data?.prenom} - ${data?.email} - ${data?.phone} - ${data?.role} - ${data?.photo}");
 
     final List<Widget> pages = _getPagesForRole(userRole);
 
@@ -457,18 +455,74 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
 }
 
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  State<HistoryPage> createState() => _HistoryPageState();
+}
 
-    return Center(
-      child: Text(
-        'Historique courses',
-        style: TextStyle(
-          color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
+class _HistoryPageState extends State<HistoryPage> {
+  late Future<List<Race>> _races;
+
+  @override
+  void initState() {
+    super.initState();
+    _races = getIt<RaceService>().showForCurrentUser();
+  }
+
+  Future<void> _refresh() async {
+    final request = getIt<RaceService>().showForCurrentUser();
+    setState(() => _races = request);
+    try {
+      await request;
+    } catch (_) {
+      // FutureBuilder affiche l'erreur et le bouton de nouvelle tentative.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(
+        child: FutureBuilder<List<Race>>(
+          future: _races,
+          builder: (context, snapshot) {
+            final races = snapshot.data ?? const <Race>[];
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 80, 16, 110),
+                children: [
+                  Text(
+                    'Historique des courses',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 20),
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      races.isEmpty)
+                    const Center(child: CircularProgressIndicator())
+                  else if (snapshot.hasError && races.isEmpty) ...[
+                    Text('Impossible de charger les courses : ${snapshot.error}'),
+                    TextButton(onPressed: _refresh, child: const Text('Réessayer')),
+                  ] else if (races.isEmpty)
+                    const Center(child: Text('Aucune course pour le moment.'))
+                  else
+                    for (final race in races)
+                      Card(
+                        child: ListTile(
+                          leading: Icon(Icons.route, color: colors.primary),
+                          title: Text('${race.startingPoint} → ${race.destination}'),
+                          subtitle: Text('Course n° ${race.id} • ${race.date}'),
+                          trailing: Text(race.status),
+                        ),
+                      ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -549,18 +603,46 @@ class OwnerDashboardPage extends StatelessWidget {
   }
 }
 
-class OwnerBikesPage extends StatelessWidget {
+class OwnerBikesPage extends ConsumerWidget {
   const OwnerBikesPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: Text(
-        'Mes motos',
-        style: TextStyle(
-          color: isDarkMode ? AppTheme.textDark : AppTheme.textLight,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ownerProvider);
+    return Scaffold(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(ownerProvider.notifier).loadOwnerData(),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 80, 16, 110),
+            children: [
+              Text('Mes motos', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 20),
+              if (state.isLoading && state.bikes.isEmpty)
+                const Center(child: CircularProgressIndicator())
+              else if (state.errorMessage != null && state.bikes.isEmpty) ...[
+                Text(state.errorMessage!),
+                TextButton(
+                  onPressed: () => ref.read(ownerProvider.notifier).loadOwnerData(),
+                  child: const Text('Réessayer'),
+                ),
+              ] else if (state.bikes.isEmpty)
+                const Center(child: Text('Aucune moto enregistrée.'))
+              else
+                for (final bike in state.bikes)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.two_wheeler),
+                      title: Text('${bike.brand} ${bike.model}'),
+                      subtitle: Text('Matricule : ${bike.matricule}'),
+                      trailing: Text(
+                        bike.bikerId == null ? 'Disponible' : 'Assignée',
+                      ),
+                    ),
+                  ),
+            ],
+          ),
         ),
       ),
     );

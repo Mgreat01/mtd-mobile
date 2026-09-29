@@ -24,7 +24,7 @@ class ComposantController extends StateNotifier<int> {
     state = 0;
     ref.read(appCtrlProvider.notifier).resetUserInMemory();
     ref.read(loginControllerProvider.notifier).resetUserInMemory();
-    unawaited(_clearPersistedSession());
+    await _clearPersistedSession();
   }
 
   Future<void> _clearPersistedSession() async {

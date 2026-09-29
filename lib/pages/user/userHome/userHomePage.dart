@@ -461,6 +461,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               );
 
               _searchController.text = result.displayName;
+              if (!mounted) return;
               FocusScope.of(context).unfocus();
             },
           );
@@ -474,7 +475,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     UserHomeState state,
     UserHomeController notifier,
   ) {
-    if (state.step == UserStep.inRace && state.currentRace != null) {
+    if (state.currentRace != null && state.step != UserStep.searching) {
       return _buildInProgressCard(context, state);
     }
 
@@ -599,6 +600,9 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   }
 
   Widget _buildInProgressCard(BuildContext context, UserHomeState state) {
+    final awaitingConfirmation =
+        state.currentRace?.status == 'pending' &&
+        state.currentRace?.bikerId != null;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -614,7 +618,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
               Icon(Icons.directions_bike, color: Colors.green),
               SizedBox(width: 8),
               Text(
-                'Course en cours',
+                'Votre course',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
@@ -626,6 +630,33 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 14),
+          if (state.currentRace?.status == 'pending') ...[
+            Text(
+              awaitingConfirmation
+                  ? 'Un biker a accepté votre course. Votre confirmation est attendue.'
+                  : 'Recherche d’un biker en cours…',
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (awaitingConfirmation) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => ref
+                    .read(userHomeControllerProvider.notifier)
+                    .showBikerAcceptance(),
+                child: const Text('CONFIRMER LE BIKER'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (state.errorMessage != null) ...[
+            Text(
+              state.errorMessage!,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -634,7 +665,11 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   builder: (_) => const RaceTrackingPage(),
                 ),
               ),
-              child: const Text('SUIVRE OU TERMINER LA COURSE'),
+              child: Text(
+                state.currentRace?.status == 'pending'
+                    ? 'VOIR LA COURSE EN ATTENTE'
+                    : 'SUIVRE OU TERMINER LA COURSE',
+              ),
             ),
           ),
         ],

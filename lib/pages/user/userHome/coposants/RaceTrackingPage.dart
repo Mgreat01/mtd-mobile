@@ -38,7 +38,7 @@ class RaceTrackingPage extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildStatusHeader(race.status),
+            _buildStatusHeader(race.status, race.bikerId != null),
 
             Padding(
               padding: const EdgeInsets.all(20.0),
@@ -71,7 +71,7 @@ class RaceTrackingPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusHeader(String status) {
+  Widget _buildStatusHeader(String status, bool hasBiker) {
     bool isPending = status == 'pending';
     Color statusColor = isPending ? Colors.orange : Colors.green;
 
@@ -82,7 +82,9 @@ class RaceTrackingPage extends ConsumerWidget {
       child: Center(
         child: Text(
           isPending
-              ? " Le motard est en route vers vous"
+              ? hasBiker
+                    ? "Motard trouvé : confirmation en attente"
+                    : "Recherche d'un motard en cours"
               : " Course en cours vers destination",
           style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
         ),

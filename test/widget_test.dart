@@ -1,31 +1,68 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moto_taxi_digital_mobile/MyApplication.dart';
+import 'package:moto_taxi_digital_mobile/business/models/bike/bike.dart';
+import 'package:moto_taxi_digital_mobile/business/services/user/owner/ownerService.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerCtrl.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/owner/ownerPage.dart';
 
-import 'package:moto_taxi_digital_mobile/main.dart';
+class _OwnerServiceForTest implements OwnerService {
+  bool fail = true;
+
+  @override
+  Future<List<Bike>> getByOwner() async {
+    if (fail) throw Exception('Service indisponible');
+    return [
+      Bike(
+        id: 1,
+        model: 'Test',
+        brand: 'Moto',
+        matricule: 'KIN-123',
+        ownerId: 1,
+      ),
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> stat() async {
+    if (fail) throw Exception('Service indisponible');
+    return {'assigned_bikes': 0, 'available_bikes': 1};
+  }
+
+  @override
+  Future<List<Bike>> getAssignatedBike() => getByOwner();
+
+  @override
+  Future<List<Bike>> getAvailableBike() => getByOwner();
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApplication());
+  testWidgets('le propriétaire peut réessayer après une erreur API', (
+    tester,
+  ) async {
+    final service = _OwnerServiceForTest();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ownerProvider.overrideWith(
+            (ref) => OwnerController(service: service),
+          ),
+        ],
+        child: const MaterialApp(home: OwnerHomePage()),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.text('Service indisponible'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    service.fail = false;
+    await tester.tap(find.text('Réessayer'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Moto Test'), findsOneWidget);
+    expect(find.text('Matricule: KIN-123'), findsOneWidget);
   });
 }

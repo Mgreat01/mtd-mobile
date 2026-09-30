@@ -9,6 +9,8 @@ import 'package:moto_taxi_digital_mobile/pages/register/documentPage/kycPage.dar
 import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/phoneNumber/phoneNumberPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/password/passwordPage.dart';
+import 'package:moto_taxi_digital_mobile/pages/register/agentLink/agentLinkPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/bottom.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
 import 'main.dart';
@@ -63,6 +65,14 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       },
     ),
     GoRoute(
+      path: '/public/register-password',
+      builder: (ctx, state) => const RegisterPasswordPage(),
+    ),
+    GoRoute(
+      path: '/public/agent-link',
+      builder: (ctx, state) => const AgentLinkPage(),
+    ),
+    GoRoute(
       path: '/public/otp',
       builder: (ctx, state) {
         final Map<String, String> data = state.extra as Map<String, String>;
@@ -114,6 +124,9 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
           '/public/register',
           '/public/pNumber',
           '/public/otp',
+          '/public/register-password',
+          '/public/agent-link',
+          '/public/kyc',
         ];
 
         if (publicAuthPages.contains(state.matchedLocation)) {

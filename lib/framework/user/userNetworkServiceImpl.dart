@@ -130,20 +130,46 @@ class UserNetworkServiceImpl implements UserNetworkService {
   }
 
   @override
-  Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/verify-otp'),
-        headers: _headers,
-        body: jsonEncode(verifyOtp.toJson()),
-      );
+  Future<User?> verifyOtp(VerifyOtp verifyOtp) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/verify-otp'),
+      headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode(verifyOtp.toJson()),
+    );
+    if (response.statusCode != 200) throw Exception(_responseMessage(response));
+    final body = jsonDecode(response.body);
+    final data = body['user'];
+    return data is Map<String, dynamic> ? User.fromJson(data) : null;
+  }
 
-      if (response.statusCode == 200) return true;
+  @override
+  Future<void> linkAgent({
+    required String token,
+    String? numericCode,
+    int? agentId,
+    String? agentCode,
+    String? qrToken,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (numericCode != null && numericCode.isNotEmpty) {
+      payload['numeric_code'] = numericCode;
+    } else {
+      payload['agent_id'] = agentId;
+      payload['agent_code'] = agentCode;
+      payload['token'] = qrToken;
+    }
 
-      final errorData = jsonDecode(response.body);
-      throw Exception(errorData['message'] ?? "Code incorrect ou expiré.");
-    } catch (e) {
-      rethrow;
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/bikers/link-agent'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_responseMessage(response));
     }
   }
 

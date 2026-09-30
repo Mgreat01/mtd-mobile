@@ -15,7 +15,7 @@ abstract class UserNetworkService {
     required String token,
     required String password,
   });
-  Future<bool> verifyOtp(VerifyOtp verifyOtp);
+  Future<User?> verifyOtp(VerifyOtp verifyOtp);
   Future<User?> registerUser(
     User user, {
     File? profilePhoto,
@@ -27,4 +27,5 @@ abstract class UserNetworkService {
   Future<String> getAddressFromLatLng(double lat, double lon);
   Future<List<SearchResult>> searchAddresses(String query);
   Future<Wallet> getWallet();
+  Future<void> linkAgent({required String token, String? numericCode, int? agentId, String? agentCode, String? qrToken});
 }

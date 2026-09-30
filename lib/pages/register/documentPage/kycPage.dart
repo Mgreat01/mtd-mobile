@@ -85,15 +85,11 @@ class KycPage extends ConsumerWidget {
     final success = await ref.read(kycControllerProvider.notifier).submitKyc(tempUser);
 
     if (success && context.mounted) {
-      context.go('/app/home');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Inscription réussie ! Votre dossier est en cours d'examen."),
-              duration: Duration(seconds: 5),
-              backgroundColor: Colors.blueAccent
-          )
-      );
+      final email = tempUser.email;
+      if (email != null) {
+        context.go('/public/otp', extra: {'email': email, 'role': tempUser.role});
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Un code OTP a été envoyé à votre e-mail.')));
+      }
     }
   }
 

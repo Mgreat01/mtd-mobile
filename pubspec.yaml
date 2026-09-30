@@ -54,6 +54,7 @@ dependencies:
   pusher_channels_flutter: ^2.6.0
   mapbox_maps_flutter: ^2.24.2
   flutter_launcher_icons: ^0.14.4
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

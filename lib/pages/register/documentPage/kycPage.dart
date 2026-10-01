@@ -56,7 +56,7 @@ class KycPage extends ConsumerWidget {
             ),
             _buildDocTile(
               context,
-              "Permis de conduire",
+              "Carte grise / document d'immatriculation",
               kycState.registrationCard,
               () => kycControl.pickDocument('registration'),
             ),
@@ -119,6 +119,17 @@ class KycPage extends ConsumerWidget {
   void _handleFinalSubmit(WidgetRef ref, BuildContext context) async {
     final tempUser = ref.read(registerControlProvider).user;
     if (tempUser == null) return;
+    final documents = ref.read(kycControllerProvider);
+    if (documents.identityDoc == null ||
+        documents.registrationCard == null ||
+        documents.businessLicense == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez ajouter les trois documents obligatoires.'),
+        ),
+      );
+      return;
+    }
 
     final success = await ref
         .read(kycControllerProvider.notifier)

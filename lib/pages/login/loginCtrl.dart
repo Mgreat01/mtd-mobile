@@ -4,6 +4,7 @@ import 'package:moto_taxi_digital_mobile/business/services/user/userLocalService
 import 'package:moto_taxi_digital_mobile/business/services/user/userNetworkService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
 import 'package:moto_taxi_digital_mobile/pages/intro/appCtrl.dart';
+import 'package:moto_taxi_digital_mobile/framework/cache/registrationProgressStore.dart';
 import 'loginState.dart';
 
 class LoginController extends StateNotifier<LoginState> {
@@ -24,6 +25,7 @@ class LoginController extends StateNotifier<LoginState> {
 
       if (user != null && user.token != null) {
         await _localService.saveUser(user);
+        await RegistrationProgressStore().clear();
         ref.read(appCtrlProvider.notifier).updateUser(user);
         state = state.copyWith(isLoading: false, isSuccess: true, user: user);
       } else {
@@ -57,7 +59,13 @@ class LoginController extends StateNotifier<LoginState> {
   }
 
   Future<void> logout() async {
+    try {
+      await _networkService.logout();
+    } catch (_) {
+      // La session locale doit pouvoir être fermée même hors connexion.
+    }
     await _localService.deleteUser();
+    ref.read(appCtrlProvider.notifier).resetUserInMemory();
     state = const LoginState();
   }
 

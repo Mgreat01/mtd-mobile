@@ -16,6 +16,7 @@ class SessionExpiredException implements Exception {
 
 abstract class UserNetworkService {
   Future<User?> login(Authentication authentication);
+  Future<void> logout();
   Future<void> requestPasswordReset(String email);
   Future<void> resetPassword({
     required String email,

@@ -75,6 +75,18 @@ class UserNetworkServiceImpl implements UserNetworkService {
   }
 
   @override
+  Future<void> logout() async {
+    if (tokens.isEmpty) return;
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/logout'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200 && response.statusCode != 401) {
+      throw Exception(_responseMessage(response));
+    }
+  }
+
+  @override
   Future<void> requestPasswordReset(String email) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/forgot-password'),

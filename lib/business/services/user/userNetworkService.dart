@@ -16,6 +16,7 @@ abstract class UserNetworkService {
     required String password,
   });
   Future<bool> verifyOtp(VerifyOtp verifyOtp);
+  Future<void> resendOtp(String email);
   Future<User?> registerUser(
     User user, {
     File? profilePhoto,

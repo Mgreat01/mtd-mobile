@@ -2,14 +2,12 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
 import '../../business/models/user/user.dart';
-import '../../business/services/user/userLocalService.dart';
 import '../../business/services/user/userNetworkService.dart';
 import 'registerState.dart';
 import '../../../main.dart';
 
 class RegisterControl extends StateNotifier<RegisterState> {
   final UserNetworkService _networkService = getIt.get<UserNetworkService>();
-  final UserLocalService _localService = getIt.get<UserLocalService>();
 
   RegisterControl() : super(const RegisterState());
 
@@ -35,7 +33,7 @@ class RegisterControl extends StateNotifier<RegisterState> {
 
   String _parseError(dynamic e) {
     try {
-     final rawString = e.toString();
+      final rawString = e.toString();
       final jsonStart = rawString.indexOf('{');
       if (jsonStart != -1) {
         final jsonPart = rawString.substring(jsonStart);
@@ -61,10 +59,20 @@ class RegisterControl extends StateNotifier<RegisterState> {
       rethrow;
     }
   }
+
+  Future<void> resendOtp(String email) async {
+    try {
+      await _networkService.resendOtp(email);
+      state = state.copyWith(error: null);
+    } catch (e) {
+      state = state.copyWith(error: _parseError(e));
+      rethrow;
+    }
+  }
 }
 
-
-final registerControlProvider = StateNotifierProvider<RegisterControl, RegisterState>((ref) {
-  ref.keepAlive();
-  return RegisterControl();
-});
+final registerControlProvider =
+    StateNotifierProvider<RegisterControl, RegisterState>((ref) {
+      ref.keepAlive();
+      return RegisterControl();
+    });

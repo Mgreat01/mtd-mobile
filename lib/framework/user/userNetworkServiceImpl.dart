@@ -33,6 +33,10 @@ class UserNetworkServiceImpl implements UserNetworkService {
         body: data,
       );
 
+      if (response.statusCode != 200) {
+        throw Exception(_responseMessage(response));
+      }
+
       // La réponse de connexion contient un jeton : ne pas l'imprimer.
 
       switch (response.statusCode) {
@@ -148,6 +152,21 @@ class UserNetworkServiceImpl implements UserNetworkService {
   }
 
   @override
+  Future<void> resendOtp(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/resend-otp'),
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'email': email.trim().toLowerCase()}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_responseMessage(response));
+    }
+  }
+
+  @override
   Future<User?> registerUser(
     User user, {
     File? profilePhoto,
@@ -199,7 +218,6 @@ class UserNetworkServiceImpl implements UserNetworkService {
       );
       var response = await http.Response.fromStream(streamedResponse);
 
-
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return User.fromJson(data['user']);
@@ -222,10 +240,7 @@ class UserNetworkServiceImpl implements UserNetworkService {
   Future<User?> getUserProfile(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/profile'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
     if (response.statusCode != 200) {
       throw Exception(_responseMessage(response));

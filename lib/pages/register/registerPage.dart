@@ -191,7 +191,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               const SizedBox(height: 15),
               _buildInput(
                 _emailController,
-                "Email (Optionnel)",
+                "Adresse email",
                 theme,
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -294,8 +294,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
       validator: (v) {
         if (v == null || v.isEmpty) return 'Ce champ est requis';
-        if (isConfirm && v != _passwordController.text)
+        if (keyboardType == TextInputType.emailAddress &&
+            !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())) {
+          return 'Adresse email invalide';
+        }
+        if (isPassword && !isConfirm && v.length < 8) {
+          return 'Le mot de passe doit contenir au moins 8 caractÃ¨res';
+        }
+        if (isConfirm && v != _passwordController.text) {
           return 'Les mots de passe ne correspondent pas';
+        }
         return null;
       },
     );

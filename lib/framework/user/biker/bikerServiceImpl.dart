@@ -26,7 +26,14 @@ class BikerServiceImpl implements BikerService {
 
   @override
   Future<List<Biker>> getAllBikers() async {
-    final response = await http.get(Uri.parse('$baseUrl/api/bikers'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/bikers'),
+      headers: _headers(_token),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Bikers indisponibles (${response.statusCode})');
+    }
 
     final data = jsonDecode(response.body);
     return (data['data'] as List).map((e) => Biker.fromJson(e)).toList();
@@ -59,13 +66,8 @@ class BikerServiceImpl implements BikerService {
 
   @override
   Future<List<Biker>> getAvailableBikers() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/bikers/available'),
-      headers: _headers(_token),
-    );
-
-    final data = jsonDecode(response.body);
-    return (data['data'] as List).map((e) => Biker.fromJson(e)).toList();
+    final bikers = await getAllBikers();
+    return bikers.where((biker) => !biker.hasBike).toList();
   }
 
   @override

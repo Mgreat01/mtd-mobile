@@ -68,9 +68,15 @@ class BikeServiceImpl implements BikeService {
   @override
   Future<List<Bike>> getBikesByOwner(int ownerId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/bikes/owner/$ownerId'),
+      Uri.parse('$baseUrl/api/bikes/owners'),
       headers: _headers(tokens),
     );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Motos du propriÃ©taire indisponibles (${response.statusCode})',
+      );
+    }
 
     final data = jsonDecode(response.body);
     return (data as List).map((e) => Bike.fromJson(e)).toList();
@@ -88,7 +94,6 @@ class BikeServiceImpl implements BikeService {
 
         // L'API retourne directement un tableau, pas besoin de accéder à data['data']
         final List<dynamic> jsonList = data is List ? data : [];
-
 
         return jsonList.map((json) => Bike.fromJson(json)).toList();
       } else {

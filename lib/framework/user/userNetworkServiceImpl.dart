@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:get_storage/get_storage.dart';
@@ -27,11 +28,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
       var url = Uri.parse('$baseUrl/api/login');
       var data = jsonEncode(authentication.toJson());
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: data,
-      );
+      final response = await http
+          .post(url, headers: {'Content-Type': 'application/json'}, body: data)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         throw Exception(_responseMessage(response));
@@ -65,6 +64,8 @@ class UserNetworkServiceImpl implements UserNetworkService {
         default:
           throw Exception("Erreur inattendue (${response.statusCode}).");
       }
+    } on TimeoutException {
+      throw Exception('Le serveur met trop de temps Ã  rÃ©pondre. RÃ©essayez.');
     } on http.ClientException catch (e) {
       throw Exception("Problème réseau : $e");
     } on FormatException {
@@ -77,10 +78,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
   @override
   Future<void> logout() async {
     if (tokens.isEmpty) return;
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/logout'),
-      headers: _headers,
-    );
+    final response = await http
+        .post(Uri.parse('$baseUrl/api/logout'), headers: _headers)
+        .timeout(const Duration(seconds: 10));
     if (response.statusCode != 200 && response.statusCode != 401) {
       throw Exception(_responseMessage(response));
     }
@@ -88,14 +88,16 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   @override
   Future<void> requestPasswordReset(String email) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/forgot-password'),
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({'email': email}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/forgot-password'),
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({'email': email}),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_responseMessage(response));
     }
@@ -107,19 +109,21 @@ class UserNetworkServiceImpl implements UserNetworkService {
     required String token,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/reset-password'),
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'email': email,
-        'token': token,
-        'password': password,
-        'password_confirmation': password,
-      }),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/reset-password'),
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'email': email,
+            'token': token,
+            'password': password,
+            'password_confirmation': password,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_responseMessage(response));
     }
@@ -148,11 +152,13 @@ class UserNetworkServiceImpl implements UserNetworkService {
   @override
   Future<bool> verifyOtp(VerifyOtp verifyOtp) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/verify-otp'),
-        headers: _headers,
-        body: jsonEncode(verifyOtp.toJson()),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/verify-otp'),
+            headers: _headers,
+            body: jsonEncode(verifyOtp.toJson()),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) return true;
 
@@ -165,14 +171,16 @@ class UserNetworkServiceImpl implements UserNetworkService {
 
   @override
   Future<void> resendOtp(String email) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/resend-otp'),
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({'email': email.trim().toLowerCase()}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/resend-otp'),
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({'email': email.trim().toLowerCase()}),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_responseMessage(response));
     }

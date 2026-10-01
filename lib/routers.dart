@@ -102,12 +102,13 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     ),
   ];
 
-  return GoRouter(
+  late final GoRouter router;
+  router = GoRouter(
     navigatorKey: navigatorKey,
     debugLogDiagnostics: true,
     initialLocation: "/public/intro",
     redirect: (context, state) {
-      final appState = ref.watch(appCtrlProvider);
+      final appState = ref.read(appCtrlProvider);
       final user = appState.user;
       final isLoading = appState.isLoading == true;
 
@@ -158,4 +159,8 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     routes: [...noAuthRoutes, ...authRoutes],
     errorBuilder: (context, state) => const NotFoundPage(),
   );
+
+  ref.listen(appCtrlProvider, (_, __) => router.refresh());
+  ref.onDispose(router.dispose);
+  return router;
 });

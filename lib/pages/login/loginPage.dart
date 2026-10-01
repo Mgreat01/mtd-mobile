@@ -29,10 +29,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.initState();
 
     ref.listenManual(loginControllerProvider, (previous, next) {
-      if (next.isSuccess) {
-        context.go('/app/introUser');
-      }
-
       if (next.error != null && next.error != previous?.error) {
         ScaffoldMessenger.of(
           context,

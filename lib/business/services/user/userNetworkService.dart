@@ -7,6 +7,13 @@ import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResu
 
 import '../../models/wallet/wallet.dart';
 
+class SessionExpiredException implements Exception {
+  const SessionExpiredException();
+
+  @override
+  String toString() => 'Votre session a expirÃ©. Veuillez vous reconnecter.';
+}
+
 abstract class UserNetworkService {
   Future<User?> login(Authentication authentication);
   Future<void> requestPasswordReset(String email);

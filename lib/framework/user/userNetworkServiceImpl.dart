@@ -242,6 +242,9 @@ class UserNetworkServiceImpl implements UserNetworkService {
       Uri.parse('$baseUrl/api/profile'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw const SessionExpiredException();
+    }
     if (response.statusCode != 200) {
       throw Exception(_responseMessage(response));
     }

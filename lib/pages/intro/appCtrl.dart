@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: unused_import
 import '../../business/models/user/user.dart';
 import '../../business/services/user/userLocalService.dart';
+import '../../business/services/user/userNetworkService.dart';
 import '../../main.dart';
 import 'appState.dart';
 
 class AppCtrl extends StateNotifier<AppState> {
   var userLocalService = getIt<UserLocalService>();
+  var userNetworkService = getIt<UserNetworkService>();
 
   AppCtrl() : super(AppState(isLoading: true)) {
     getUser();
@@ -20,7 +22,21 @@ class AppCtrl extends StateNotifier<AppState> {
   Future<void> getUser() async {
     try {
       var user = await userLocalService.getUser();
-      state = state.copyWith(user: user, isLoading: false);
+      final token = user?.token;
+      if (user != null && token != null && token.isNotEmpty) {
+        try {
+          await userNetworkService.getUserProfile(token);
+        } on SessionExpiredException {
+          await userLocalService.deleteUser();
+          user = null;
+        } catch (_) {
+          // Une panne rÃ©seau ne doit pas dÃ©connecter une session locale valide.
+        }
+      } else if (user != null) {
+        await userLocalService.deleteUser();
+        user = null;
+      }
+      state = AppState(user: user, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
     }

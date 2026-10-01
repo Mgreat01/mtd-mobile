@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:moto_taxi_digital_mobile/framework/cache/registrationProgressStore.dart';
 
 class AccountValidatedPage extends StatelessWidget {
   const AccountValidatedPage({super.key});
@@ -9,50 +9,47 @@ class AccountValidatedPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle, size: 80, color: Colors.green),
-            const SizedBox(height: 20),
-            const Text(
-              'Votre compte est validé !',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                'Félicitations ! Vous êtes maintenant prêt à commencer vos courses',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.schedule, size: 80, color: Colors.orange),
+              const SizedBox(height: 20),
+              const Text(
+                'Email v\u00e9rifi\u00e9',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Votre dossier est en attente de validation administrative. '
+                'Vous pourrez vous connecter apr\u00e8s son approbation.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
-            ),
-            const SizedBox(height: 30),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.orange),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                '123456',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.orange),
-              ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: 200,
-              child: ElevatedButton(
-                onPressed: () => context.go('/login'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: 220,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await RegistrationProgressStore().clear();
+                    if (context.mounted) context.go('/public/login');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Revenir \u00e0 la connexion',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-                child: const Text('Accéder au tableau de bord', style: TextStyle(color: Colors.white)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

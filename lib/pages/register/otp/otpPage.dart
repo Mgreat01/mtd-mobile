@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/verifyOtp.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerCtrl.dart';
+import 'package:moto_taxi_digital_mobile/framework/cache/registrationProgressStore.dart';
 
 class OTPPage extends ConsumerStatefulWidget {
   final String email;
@@ -16,9 +17,13 @@ class OTPPage extends ConsumerStatefulWidget {
 }
 
 class _OTPPageState extends ConsumerState<OTPPage> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isResending = false;
 
   @override
   void dispose() {
@@ -43,22 +48,61 @@ class _OTPPageState extends ConsumerState<OTPPage> {
 
     try {
       final verifyData = VerifyOtp(email: widget.email, otp: otpCode);
-      final success = await ref.read(registerControlProvider.notifier).verifyAccount(verifyData);
+      final success = await ref
+          .read(registerControlProvider.notifier)
+          .verifyAccount(verifyData);
 
       if (success && mounted) {
         if (widget.role == 'passenger') {
+          await RegistrationProgressStore().clear();
+          if (!mounted) return;
           context.go('/public/login');
         } else {
+          await RegistrationProgressStore().saveAwaitingApproval(
+            email: widget.email,
+            role: widget.role,
+          );
+          if (!mounted) return;
           context.go('/public/AccountValidatedPage');
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Compte vérifié. En attente de validation administrative."))
+            const SnackBar(
+              content: Text(
+                "Compte vérifié. En attente de validation administrative.",
+              ),
+            ),
           );
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
+      setState(
+        () => _errorMessage = e.toString().replaceAll('Exception: ', ''),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      _isResending = true;
+      _errorMessage = null;
+    });
+    try {
+      await ref.read(registerControlProvider.notifier).resendOtp(widget.email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Un nouveau code a \u00e9t\u00e9 envoy\u00e9.'),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isResending = false);
     }
   }
 
@@ -102,14 +146,20 @@ class _OTPPageState extends ConsumerState<OTPPage> {
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, (index) => _buildOtpBox(index, theme)),
+                children: List.generate(
+                  6,
+                  (index) => _buildOtpBox(index, theme),
+                ),
               ),
 
               if (_errorMessage != null) ...[
                 const SizedBox(height: 20),
                 Text(
                   _errorMessage!,
-                  style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colorScheme.error,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
 
@@ -122,16 +172,26 @@ class _OTPPageState extends ConsumerState<OTPPage> {
                   onPressed: _isLoading ? null : _verify,
                   style: theme.elevatedButtonTheme.style?.copyWith(
                     backgroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.disabled)) return colorScheme.outline.withOpacity(0.3);
+                      if (states.contains(WidgetState.disabled))
+                        return colorScheme.outline.withOpacity(0.3);
                       return const Color(0xFF1E8142);
                     }),
                   ),
                   child: _isLoading
                       ? CircularProgressIndicator(color: colorScheme.onPrimary)
                       : const Text(
-                    'Vérifier',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                          'Vérifier',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+              TextButton(
+                onPressed: (_isLoading || _isResending) ? null : _resend,
+                child: Text(
+                  _isResending ? 'Envoi en cours...' : 'Renvoyer le code',
                 ),
               ),
             ],
@@ -162,7 +222,9 @@ class _OTPPageState extends ConsumerState<OTPPage> {
           fillColor: theme.inputDecorationTheme.fillColor,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.5)),
+            borderSide: BorderSide(
+              color: theme.colorScheme.outline.withOpacity(0.5),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -170,8 +232,10 @@ class _OTPPageState extends ConsumerState<OTPPage> {
           ),
         ),
         onChanged: (value) {
-          if (value.length == 1 && index < 5) FocusScope.of(context).nextFocus();
-          if (value.isEmpty && index > 0) FocusScope.of(context).previousFocus();
+          if (value.length == 1 && index < 5)
+            FocusScope.of(context).nextFocus();
+          if (value.isEmpty && index > 0)
+            FocusScope.of(context).previousFocus();
         },
       ),
     );

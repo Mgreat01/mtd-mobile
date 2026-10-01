@@ -24,14 +24,19 @@ class AppCtrl extends StateNotifier<AppState> {
       var user = await userLocalService.getUser();
       final token = user?.token;
       if (user != null && token != null && token.isNotEmpty) {
+        // Afficher immédiatement la session locale. La validation distante ne
+        // doit jamais bloquer la reprise de l'application.
+        state = AppState(user: user, isLoading: false);
         try {
           await userNetworkService.getUserProfile(token);
         } on SessionExpiredException {
           await userLocalService.deleteUser();
           user = null;
+          state = AppState(user: null, isLoading: false);
         } catch (_) {
           // Une panne rÃ©seau ne doit pas dÃ©connecter une session locale valide.
         }
+        return;
       } else if (user != null) {
         await userLocalService.deleteUser();
         user = null;

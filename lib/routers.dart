@@ -10,7 +10,7 @@ import 'package:moto_taxi_digital_mobile/pages/register/otp/otpPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/phoneNumber/phoneNumberPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerPage.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/coposants/bottom.dart';
-import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomePage.dart';
+import 'package:moto_taxi_digital_mobile/framework/cache/registrationProgressStore.dart';
 import 'main.dart';
 import 'pages/intro/appCtrl.dart';
 import 'pages/intro/introPage.dart';
@@ -18,6 +18,7 @@ import 'utils/navigationUtils.dart';
 
 final routerConfigProvider = Provider<GoRouter>((ref) {
   final navigatorKey = getIt<NavigationUtils>().navigatorKey;
+  final registrationStore = RegistrationProgressStore();
 
   /*
    ROUTES RESTREINTES (Nécessitent un utilisateur connecté)
@@ -64,9 +65,13 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     ),
     GoRoute(
       path: '/public/otp',
+      name: 'otp_page',
       builder: (ctx, state) {
-        final Map<String, String> data = state.extra as Map<String, String>;
-        return OTPPage(email: data['email']!, role: data['role']!);
+        final progress = registrationStore.read();
+        final email = state.uri.queryParameters['email'] ?? progress?.email;
+        final role = state.uri.queryParameters['role'] ?? progress?.role;
+        if (email == null || role == null) return const LoginPage();
+        return OTPPage(email: email, role: role);
       },
     ),
     GoRoute(
@@ -104,7 +109,7 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final appState = ref.watch(appCtrlProvider);
       final user = appState.user;
-      final isLoading = user == null && appState.error == null;
+      final isLoading = appState.isLoading == true;
 
       if (isLoading) return null;
 
@@ -123,6 +128,24 @@ final routerConfigProvider = Provider<GoRouter>((ref) {
       }
 
       if (user == null) {
+        final progress = registrationStore.read();
+        final isEntryPage =
+            state.matchedLocation == '/public/intro' ||
+            state.matchedLocation == '/public/login';
+
+        if (isEntryPage && progress != null) {
+          if (progress.step == RegistrationStep.otp) {
+            return Uri(
+              path: '/public/otp',
+              queryParameters: {'email': progress.email, 'role': progress.role},
+            ).toString();
+          }
+          return '/public/AccountValidatedPage';
+        }
+
+        if (state.matchedLocation == '/public/intro') {
+          return '/public/login';
+        }
         if (state.matchedLocation.startsWith('/app/')) {
           return '/public/login';
         }

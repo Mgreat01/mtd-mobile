@@ -48,26 +48,21 @@ class _OTPPageState extends ConsumerState<OTPPage> {
 
     try {
       final verifyData = VerifyOtp(email: widget.email, otp: otpCode);
-      final success = await ref
+      final verifiedUser = await ref
           .read(registerControlProvider.notifier)
           .verifyAccount(verifyData);
 
-      if (success && mounted) {
+      if (verifiedUser != null && mounted) {
         if (widget.role == 'passenger') {
           await RegistrationProgressStore().clear();
           if (!mounted) return;
           context.go('/public/login');
         } else {
-          await RegistrationProgressStore().saveAwaitingApproval(
-            email: widget.email,
-            role: widget.role,
-          );
-          if (!mounted) return;
-          context.go('/public/AccountValidatedPage');
+          context.go('/public/agent-link');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                "Compte vérifié. En attente de validation administrative.",
+                'E-mail vérifié. Liez maintenant votre compte à votre agent.',
               ),
             ),
           );

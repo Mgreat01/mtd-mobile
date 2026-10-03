@@ -6,14 +6,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:moto_taxi_digital_mobile/business/models/user/user.dart';
 import 'package:moto_taxi_digital_mobile/pages/register/registerCtrl.dart';
-import 'package:moto_taxi_digital_mobile/framework/cache/registrationProgressStore.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   final String role;
   final String phone;
-
   const RegisterPage({super.key, required this.role, required this.phone});
-
   @override
   ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
@@ -21,140 +18,82 @@ class RegisterPage extends ConsumerStatefulWidget {
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
-
-  final _nameController = TextEditingController();
-  final _postNomController = TextEditingController();
-  final _prenomController = TextEditingController();
-  final _genderController = TextEditingController();
-  final _birthDateController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _communeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _name = TextEditingController();
+  final _postnom = TextEditingController();
+  final _prenom = TextEditingController();
+  final _gender = TextEditingController();
+  final _birthDate = TextEditingController();
+  final _email = TextEditingController();
+  final _commune = TextEditingController();
 
   @override
   void dispose() {
-    for (var controller in [
-      _nameController,
-      _postNomController,
-      _prenomController,
-      _genderController,
-      _birthDateController,
-      _emailController,
-      _communeController,
-      _passwordController,
-      _confirmPasswordController,
+    for (final c in [
+      _name,
+      _postnom,
+      _prenom,
+      _gender,
+      _birthDate,
+      _email,
+      _commune,
     ]) {
-      controller.dispose();
+      c.dispose();
     }
     super.dispose();
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(
+    final x = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 70,
     );
-    if (pickedFile != null)
-      setState(() => _selectedImage = File(pickedFile.path));
+    if (x != null) setState(() => _selectedImage = File(x.path));
   }
 
   Future<void> _selectDate() async {
-    FocusScope.of(context).unfocus();
-    final theme = Theme.of(context);
-
-    final DateTime? picked = await showDatePicker(
+    final p = await showDatePicker(
       context: context,
       initialDate: DateTime(2000),
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: theme.copyWith(
-            colorScheme: theme.colorScheme.copyWith(
-              primary: theme.colorScheme.primary, // Utilise la couleur du thème
-              onPrimary: Colors.white,
-              onSurface: theme.colorScheme.onSurface,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-
-    if (picked != null) {
-      setState(() {
-        _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
-      });
-    }
+    if (p != null)
+      setState(() => _birthDate.text = DateFormat('yyyy-MM-dd').format(p));
   }
 
-  Future<void> _handleFinalRegister() async {
-    if (_formKey.currentState!.validate()) {
-      final email = _emailController.text.trim();
-      final role = widget.role;
-
-      final tempUser = User(
-        name: _nameController.text.trim(),
-        postnom: _postNomController.text.trim(),
-        prenom: _prenomController.text.trim(),
-        gender: _genderController.text,
-        birthDate: _birthDateController.text,
-        commune: _communeController.text.trim(),
-        email: email,
-        password: _passwordController.text,
-        phone: widget.phone,
-        role: role,
-        photo: _selectedImage?.path,
-      );
-
-      if (role == 'passenger') {
-        final success = await ref
-            .read(registerControlProvider.notifier)
-            .register(tempUser);
-        if (success && mounted) {
-          await RegistrationProgressStore().saveOtp(email: email, role: role);
-          if (!mounted) return;
-          context.go(
-            Uri(
-              path: '/public/otp',
-              queryParameters: {'email': email, 'role': role},
-            ).toString(),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Veuillez vérifier votre email"),
-              backgroundColor: Colors.blue,
-            ),
-          );
-        }
-      } else {
-        ref.read(registerControlProvider.notifier).storeTempUser(tempUser);
-        context.push('/public/kyc');
-      }
-    }
+  void _continue() {
+    if (!_formKey.currentState!.validate()) return;
+    final user = User(
+      name: _name.text.trim(),
+      postnom: _postnom.text.trim(),
+      prenom: _prenom.text.trim(),
+      phone: widget.phone,
+      gender: _gender.text,
+      birthDate: _birthDate.text,
+      commune: _commune.text.trim(),
+      email: _email.text.trim(),
+      role: widget.role,
+      photo: _selectedImage?.path,
+    );
+    ref.read(registerControlProvider.notifier).storeTempUser(user);
+    context.push('/public/register-password');
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(registerControlProvider);
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+    final cs = theme.colorScheme;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          "Inscription",
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
+          'Informations personnelles',
+          style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+          icon: Icon(Icons.arrow_back, color: cs.onSurface),
           onPressed: () => context.pop(),
         ),
       ),
@@ -165,95 +104,95 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInput(_nameController, "Nom", theme),
+              _input(_name, 'Nom', theme),
               const SizedBox(height: 15),
               Row(
                 children: [
                   Expanded(
-                    child: _buildInput(_postNomController, "Post-nom", theme),
+                    child: _input(_postnom, 'Post-nom', theme, required: false),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: _buildInput(_prenomController, "Prénom", theme),
+                    child: _input(_prenom, 'Prénom', theme, required: false),
                   ),
                 ],
               ),
               const SizedBox(height: 15),
-              _buildInput(
-                _birthDateController,
-                "Date de naissance (AAAA-MM-DD)",
+              _input(
+                _birthDate,
+                'Date de naissance',
                 theme,
                 readOnly: true,
                 onTap: _selectDate,
               ),
               const SizedBox(height: 15),
-              _buildDropdownInput(theme),
+              _genderDrop(theme),
               const SizedBox(height: 15),
-              _buildInput(
-                _emailController,
-                "Adresse email",
+              _input(
+                _email,
+                'Adresse e-mail',
                 theme,
                 keyboardType: TextInputType.emailAddress,
+                email: true,
               ),
               const SizedBox(height: 15),
-              _buildInput(_communeController, "Commune", theme),
+              _input(_commune, 'Commune', theme),
               const SizedBox(height: 25),
               Text(
-                "Photo de profil",
+                'Photo de profil',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: colorScheme.onSurface,
+                  color: cs.onSurface,
                 ),
               ),
               const SizedBox(height: 10),
-              _buildPhotoPicker(theme),
-              const SizedBox(height: 25),
-              _buildInput(
-                _passwordController,
-                "Mot de passe",
-                theme,
-                isPassword: true,
-              ),
-              const SizedBox(height: 15),
-              _buildInput(
-                _confirmPasswordController,
-                "Confirmer le mot de passe",
-                theme,
-                isPassword: true,
-                isConfirm: true,
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.inputDecorationTheme.fillColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outline.withOpacity(.3)),
+                  ),
+                  child: _selectedImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              color: cs.onSurface.withOpacity(.4),
+                              size: 40,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Ajouter une photo',
+                              style: TextStyle(
+                                color: cs.onSurface.withOpacity(.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 35),
-
-              if (state.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 15),
-                  child: Text(
-                    state.error!,
-                    style: TextStyle(color: colorScheme.error, fontSize: 13),
-                  ),
-                ),
-
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: state.isLoading ? null : _handleFinalRegister,
-                  style: theme
-                      .elevatedButtonTheme
-                      .style, // Utilise le style centralisé
-                  child: state.isLoading
-                      ? CircularProgressIndicator(color: colorScheme.onPrimary)
-                      : const Text(
-                          "Continuer",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                  onPressed: _continue,
+                  style: theme.elevatedButtonTheme.style,
+                  child: const Text(
+                    'Continuer',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -261,109 +200,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  Widget _buildInput(
-    TextEditingController controller,
+  Widget _input(
+    TextEditingController c,
     String hint,
     ThemeData theme, {
-    bool isPassword = false,
-    bool isConfirm = false,
+    bool required = true,
     bool readOnly = false,
     VoidCallback? onTap,
     TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword,
-      readOnly: readOnly,
-      onTap: onTap,
-      keyboardType: keyboardType,
-      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: theme.colorScheme.onSurface.withOpacity(0.4),
-          fontSize: 14,
-        ),
-        suffixIcon: readOnly
-            ? Icon(
-                Icons.calendar_today,
-                size: 20,
-                color: theme.colorScheme.primary,
-              )
-            : null,
-      ),
-      validator: (v) {
-        if (v == null || v.isEmpty) return 'Ce champ est requis';
-        if (keyboardType == TextInputType.emailAddress &&
-            !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())) {
-          return 'Adresse email invalide';
-        }
-        if (isPassword && !isConfirm && v.length < 8) {
-          return 'Le mot de passe doit contenir au moins 8 caractÃ¨res';
-        }
-        if (isConfirm && v != _passwordController.text) {
-          return 'Les mots de passe ne correspondent pas';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildDropdownInput(ThemeData theme) {
-    return DropdownButtonFormField<String>(
-      dropdownColor: theme.colorScheme.surface,
-      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-      decoration: const InputDecoration(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-      items: const [
-        DropdownMenuItem(value: "M", child: Text("Masculin")),
-        DropdownMenuItem(value: "F", child: Text("Féminin")),
-      ],
-      onChanged: (v) => _genderController.text = v!,
-      hint: Text(
-        "Genre",
-        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4)),
-      ),
-      validator: (v) => v == null ? 'Sélectionnez un genre' : null,
-    );
-  }
-
-  Widget _buildPhotoPicker(ThemeData theme) {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-        height: 120,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.inputDecorationTheme.fillColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-        ),
-        child: _selectedImage != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(_selectedImage!, fit: BoxFit.cover),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_outlined,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
-                    size: 40,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Ajouter une photo",
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
+    bool email = false,
+  }) => TextFormField(
+    controller: c,
+    readOnly: readOnly,
+    onTap: onTap,
+    keyboardType: keyboardType,
+    decoration: InputDecoration(
+      hintText: hint,
+      suffixIcon: readOnly
+          ? Icon(Icons.calendar_today, color: theme.colorScheme.primary)
+          : null,
+    ),
+    validator: (v) {
+      final x = v?.trim() ?? '';
+      if (required && x.isEmpty) return 'Ce champ est requis';
+      if (email && x.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(x))
+        return 'Adresse e-mail invalide';
+      return null;
+    },
+  );
+  Widget _genderDrop(ThemeData theme) => DropdownButtonFormField<String>(
+    dropdownColor: theme.colorScheme.surface,
+    decoration: const InputDecoration(),
+    items: const [
+      DropdownMenuItem(value: 'M', child: Text('Masculin')),
+      DropdownMenuItem(value: 'F', child: Text('Féminin')),
+    ],
+    onChanged: (v) => _gender.text = v ?? '',
+    hint: const Text('Genre'),
+    validator: (v) => v == null ? 'Sélectionnez un genre' : null,
+  );
 }

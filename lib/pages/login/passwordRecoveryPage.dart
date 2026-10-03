@@ -31,7 +31,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       await _service.requestPasswordReset(_emailController.text.trim());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lien de réinitialisation envoyé.')),
+        const SnackBar(content: Text('Code de réinitialisation envoyé.')),
       );
       context.pushNamed('reset_password', extra: _emailController.text.trim());
     } catch (error) {
@@ -48,7 +48,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return _PasswordRecoveryLayout(
       title: 'Mot de passe oublié',
-      subtitle: 'Saisissez votre e-mail. Nous vous enverrons un lien sécurisé.',
+      subtitle: 'Saisissez votre e-mail. Nous vous enverrons un code OTP à 6 chiffres.',
       icon: Icons.lock_reset_rounded,
       formKey: _formKey,
       children: [
@@ -66,7 +66,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         const SizedBox(height: 22),
         _primaryButton(
-          label: 'Envoyer le lien',
+          label: 'Envoyer le code',
           isLoading: _isLoading,
           onPressed: _submit,
         ),
@@ -79,7 +79,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     'reset_password',
                     extra: _emailController.text.trim(),
                   ),
-            child: const Text('J’ai déjà reçu un lien ou un jeton'),
+            child: const Text('J’ai déjà reçu mon code'),
           ),
         ),
       ],
@@ -151,7 +151,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     return _PasswordRecoveryLayout(
       title: 'Nouveau mot de passe',
       subtitle:
-          'Copiez le jeton reçu par e-mail puis choisissez un nouveau mot de passe.',
+          'Saisissez le code OTP reçu par e-mail puis choisissez un nouveau mot de passe.',
       icon: Icons.password_rounded,
       formKey: _formKey,
       children: [
@@ -167,17 +167,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           validator: _emailValidator,
         ),
         const SizedBox(height: 14),
-        _label('Jeton de réinitialisation', Icons.vpn_key_outlined),
+        _label('Code OTP', Icons.vpn_key_outlined),
         const SizedBox(height: 6),
         TextFormField(
           controller: _tokenController,
           textInputAction: TextInputAction.next,
           decoration: _inputDecoration(
-            'Jeton reçu par e-mail',
+            'Code à 6 chiffres',
             Icons.key_rounded,
           ),
           validator: (value) => value == null || value.trim().isEmpty
-              ? 'Le jeton est requis'
+              ? 'Le code OTP est requis'
               : null,
         ),
         const SizedBox(height: 14),

@@ -478,6 +478,38 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     );
   }
 
+  Future<double?> loadEstimatedFare(int priceListId) async {
+    try {
+      final prices = await _bikerService.getPrices();
+      if (prices is! List) throw const FormatException('Tarifs invalides');
+      final price = prices.whereType<Map>().where((item) {
+        return int.tryParse(item['id']?.toString() ?? '') == priceListId;
+      }).firstOrNull;
+      if (price == null) throw const FormatException('Tarif introuvable');
+
+      // Le backend débite actuellement max_fare_per_race à la clôture.
+      final amount = double.tryParse(
+        (price['max_fare_per_race'] ?? price['base_fare']).toString(),
+      );
+      if (amount == null || amount <= 0) {
+        throw const FormatException('Montant du tarif invalide');
+      }
+      if (mounted) {
+        state = state.copyWith(estimatedFare: amount, clearErrorMessage: true);
+      }
+      return amount;
+    } catch (error) {
+      if (mounted) {
+        state = state.copyWith(
+          errorMessage:
+              'Impossible de vérifier le tarif. Réessayez avant de réserver.',
+        );
+      }
+      debugPrint('Chargement du tarif impossible: $error');
+      return null;
+    }
+  }
+
   Future<bool> confirmBooking({
     required String destinationName,
     required int priceListId,

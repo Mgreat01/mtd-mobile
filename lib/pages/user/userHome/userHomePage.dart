@@ -565,6 +565,23 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   return;
                 }
 
+                const priceListId = 1;
+                final amount = await notifier.loadEstimatedFare(priceListId);
+                if (!context.mounted) return;
+                if (amount == null) {
+                  final error = ref
+                      .read(userHomeControllerProvider)
+                      .errorMessage;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        error ?? 'Tarif temporairement indisponible.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
                 _bookingPageOpen = true;
                 await Navigator.push(
                   context,
@@ -573,8 +590,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                       params: ConfirmRaceState(
                         destinationName: state.destinationAddress!,
                         startAddress: current,
-                        amount: 10000,
-                        priceListId: 1,
+                        amount: amount,
+                        priceListId: priceListId,
                         startLat: state.pickupLocation.latitude,
                         startLng: state.pickupLocation.longitude,
                         endLat: state.destinationLocation!.latitude,

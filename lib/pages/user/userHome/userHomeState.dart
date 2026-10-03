@@ -43,6 +43,7 @@ class UserHomeState {
   final UserStep step;
   final double? routeDistanceKm;
   final double? routeDurationMin;
+  final double? estimatedFare;
   final String? errorMessage;
   final Map<String, dynamic>? bikerAcceptance;
 
@@ -68,6 +69,7 @@ class UserHomeState {
     this.step = UserStep.searching,
     this.routeDistanceKm,
     this.routeDurationMin,
+    this.estimatedFare,
     this.errorMessage,
     this.bikerAcceptance,
   });
@@ -96,6 +98,7 @@ class UserHomeState {
     UserStep? step,
     double? routeDistanceKm,
     double? routeDurationMin,
+    double? estimatedFare,
     String? errorMessage,
     bool clearErrorMessage = false,
     Map<String, dynamic>? bikerAcceptance,
@@ -127,6 +130,7 @@ class UserHomeState {
       routeDistanceKm: routeDistanceKm ?? this.routeDistanceKm,
 
       routeDurationMin: routeDurationMin ?? this.routeDurationMin,
+      estimatedFare: estimatedFare ?? this.estimatedFare,
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,

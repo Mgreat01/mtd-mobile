@@ -37,21 +37,22 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   UserHomeController(
     this._raceService,
     this._bikerService,
-    this._networkService,
-  ) : super(
-        UserHomeState(
-          pickupLocation: const LatLng(-4.322447, 15.307045),
-          mapCenter: const LatLng(-4.322447, 15.307045),
-        ),
-      ) {
-    _init();
+    this._networkService, {
+    bool initialize = true,
+  }) : super(
+         UserHomeState(
+           pickupLocation: const LatLng(-4.322447, 15.307045),
+           mapCenter: const LatLng(-4.322447, 15.307045),
+         ),
+       ) {
+    if (initialize) _init();
   }
 
   Future<void> _init() async {
     // Le GPS et le WebSocket ne doivent pas bloquer la reprise de la course.
     _listenToRealtimeEvents();
     _startRefreshTimer();
-    await _syncActiveRace();
+    unawaited(_syncActiveRace());
 
     _listenToGpsChanges();
 
@@ -125,6 +126,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       state = state.copyWith(
         clearCurrentRace: true,
         clearCurrentRoute: true,
+        clearBikerAcceptance: true,
         clearSelectedBiker: true,
         routeCoordinates: const [],
         routeDistanceKm: 0,
@@ -147,6 +149,20 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     if (!mounted) return;
     final current = state.currentRace;
     if (current != null && current.id != race.id) return;
+    if (race.status == 'completed' || race.status == 'cancelled') {
+      state = state.copyWith(
+        clearCurrentRace: true,
+        clearCurrentRoute: true,
+        clearBikerAcceptance: true,
+        clearSelectedBiker: true,
+        routeCoordinates: const [],
+        routeDistanceKm: 0,
+        routeDurationMin: 0,
+        step: UserStep.searching,
+      );
+      return;
+    }
+    if (current?.status == 'ongoing' && race.status == 'pending') return;
 
     final needsConfirmation = race.status == 'pending' && race.bikerId != null;
     final shouldPrompt =
@@ -171,7 +187,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
   }
 
   Future<void> _syncActiveRace() async {
-    if (_syncingRace || !mounted) return;
+    if (_syncingRace || !mounted || state.isLoading) return;
     _syncingRace = true;
     final initialRaceId = state.currentRace?.id;
     try {
@@ -208,6 +224,9 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         );
       } else {
         _applySyncedRace(race);
+        if (race.status == 'ongoing' && state.routeCoordinates.isEmpty) {
+          unawaited(_loadRaceRoute(race.id, expectedStatus: 'ongoing'));
+        }
       }
     } catch (error) {
       debugPrint('Synchronisation de la course passager impossible: $error');
@@ -463,7 +482,10 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     required String destinationName,
     required int priceListId,
   }) async {
-    if (state.destinationLocation == null || state.destinationAddress == null) {
+    if (state.isLoading ||
+        state.currentRace != null ||
+        state.destinationLocation == null ||
+        state.destinationAddress == null) {
       return false;
     }
 
@@ -504,7 +526,7 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         isLoading: false,
         clearErrorMessage: true,
       );
-      unawaited(_loadCreatedRaceRoute(createdRace.id));
+      unawaited(_loadRaceRoute(createdRace.id, expectedStatus: 'pending'));
       unawaited(_syncActiveRace());
       return true;
     } catch (e) {
@@ -515,10 +537,15 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     }
   }
 
-  Future<void> _loadCreatedRaceRoute(int raceId) async {
+  Future<void> _loadRaceRoute(
+    int raceId, {
+    required String expectedStatus,
+  }) async {
     try {
       final route = await _raceService.getRaceRoute(raceId);
-      if (mounted && state.currentRace?.id == raceId) {
+      if (mounted &&
+          state.currentRace?.id == raceId &&
+          state.currentRace?.status == expectedStatus) {
         state = state.copyWith(
           currentRoute: route,
           routeCoordinates: route.route.geometry.coordinates,
@@ -531,34 +558,66 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     }
   }
 
-  Future<void> cancelRace() async {
-    if (state.currentRace == null) return;
+  Future<bool> cancelRace() async {
+    final race = state.currentRace;
+    if (race == null || race.status != 'pending' || state.isLoading) {
+      return false;
+    }
 
+    state = state.copyWith(isLoading: true, clearErrorMessage: true);
     try {
-      await _raceService.deletedRace(state.currentRace!.id);
+      await _raceService.deletedRace(race.id);
+
+      if (!mounted) return true;
 
       state = state.copyWith(
         clearCurrentRace: true,
         clearCurrentRoute: true,
+        clearBikerAcceptance: true,
         routeCoordinates: const [],
+        routeDistanceKm: 0,
+        routeDurationMin: 0,
         clearSelectedBiker: true,
         step: UserStep.searching,
+        isLoading: false,
         clearErrorMessage: true,
       );
+      return true;
     } catch (e) {
-      print("Erreur annulation: $e");
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      return false;
     }
   }
 
   Future<void> confirmAcceptedBiker() async {
     final race = state.currentRace;
-    if (race == null) return;
-    state = state.copyWith(isLoading: true, clearBikerAcceptance: true);
+    if (race == null ||
+        race.status != 'pending' ||
+        race.bikerId == null ||
+        state.isLoading) {
+      return;
+    }
+    state = state.copyWith(
+      isLoading: true,
+      clearBikerAcceptance: true,
+      clearErrorMessage: true,
+    );
     try {
       final route = await _raceService.confirmPassenger(race.id);
-      final updatedRace = await _raceService.getRaceById(race.id);
+      if (!mounted || state.currentRace?.id != race.id) return;
+      // Une confirmation HTTP réussie suffit : la relecture de la course ne
+      // doit pas faire croire au passager que la confirmation a échoué.
+      final ongoingRace = Race.fromJson({
+        ...race.toJson(),
+        'status': 'ongoing',
+      });
       state = state.copyWith(
-        currentRace: updatedRace,
+        currentRace: ongoingRace,
         currentRoute: route,
         routeCoordinates: route.route.geometry.coordinates,
         routeDistanceKm: route.route.distance / 1000,
@@ -567,7 +626,28 @@ class UserHomeController extends StateNotifier<UserHomeState> {
         isLoading: false,
         clearErrorMessage: true,
       );
+      unawaited(_syncActiveRace());
     } catch (error) {
+      if (!mounted || state.currentRace?.id != race.id) return;
+      // Le serveur peut avoir démarré la course avant qu'une réponse ou une
+      // route valide nous parvienne. Vérifier l'état avant de proposer un retry.
+      try {
+        final latest = await _raceService.getRaceById(race.id);
+        if (!mounted || state.currentRace?.id != race.id) return;
+        if (latest.status == 'ongoing') {
+          state = state.copyWith(
+            currentRace: latest,
+            step: UserStep.inRace,
+            isLoading: false,
+            clearErrorMessage: true,
+          );
+          unawaited(_loadRaceRoute(race.id, expectedStatus: 'ongoing'));
+          return;
+        }
+      } catch (syncError) {
+        debugPrint('Vérification de confirmation impossible: $syncError');
+      }
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: error.toString().replaceFirst('Exception: ', ''),
@@ -584,9 +664,11 @@ class UserHomeController extends StateNotifier<UserHomeState> {
     state = state.copyWith(isLoading: true, clearErrorMessage: true);
     try {
       await _raceService.completeRace(race.id);
+      if (!mounted || state.currentRace?.id != race.id) return true;
       state = state.copyWith(
         clearCurrentRace: true,
         clearCurrentRoute: true,
+        clearBikerAcceptance: true,
         routeCoordinates: const [],
         routeDistanceKm: 0,
         routeDurationMin: 0,
@@ -598,6 +680,28 @@ class UserHomeController extends StateNotifier<UserHomeState> {
       await refreshBikers();
       return true;
     } catch (error) {
+      try {
+        final latest = await _raceService.getRaceById(race.id);
+        if (!mounted || state.currentRace?.id != race.id) return true;
+        if (latest.status == 'completed') {
+          state = state.copyWith(
+            clearCurrentRace: true,
+            clearCurrentRoute: true,
+            clearBikerAcceptance: true,
+            clearSelectedBiker: true,
+            routeCoordinates: const [],
+            routeDistanceKm: 0,
+            routeDurationMin: 0,
+            step: UserStep.searching,
+            isLoading: false,
+            clearErrorMessage: true,
+          );
+          return true;
+        }
+      } catch (syncError) {
+        debugPrint('Vérification de fin de course impossible: $syncError');
+      }
+      if (!mounted) return false;
       state = state.copyWith(
         isLoading: false,
         errorMessage: error.toString().replaceFirst('Exception: ', ''),

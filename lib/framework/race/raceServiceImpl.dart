@@ -79,6 +79,24 @@ class RaceServiceImpl implements RaceService {
       Uri.parse('$baseUrl/api/races/$id'),
       headers: _headers(tokens),
     );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(response, 'Annulation refusée'));
+    }
+    // Certaines versions du serveur répondent 200 avec un message d'échec.
+    if (response.body.trim().isNotEmpty && response.body.trim() != 'null') {
+      final body = _tryJson(response.body);
+      if (body is Map) {
+        final message = body['message']?.toString().toLowerCase() ?? '';
+        if (body['error'] != null ||
+            body['success'] == false ||
+            message.contains('only admin') ||
+            message.contains('unauthorized') ||
+            message.contains('refus') ||
+            message.contains('impossible')) {
+          throw Exception(_errorMessage(response, 'Annulation refusée'));
+        }
+      }
+    }
     return response.statusCode;
   }
 
@@ -88,8 +106,28 @@ class RaceServiceImpl implements RaceService {
       Uri.parse('$baseUrl/api/races/$id'),
       headers: _headers(tokens),
     );
+    if (response.statusCode != 200) {
+      throw Exception(
+        _errorMessage(response, 'Impossible de charger la course'),
+      );
+    }
     final data = jsonDecode(response.body);
-    return Race.fromJson(data);
+    if (data is! Map) throw const FormatException('Course invalide');
+    return Race.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  dynamic _tryJson(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _errorMessage(http.Response response, String fallback) {
+    final data = _tryJson(response.body);
+    final message = data is Map ? data['message'] ?? data['error'] : null;
+    return message?.toString() ?? '$fallback (${response.statusCode})';
   }
 
   @override
@@ -109,7 +147,9 @@ class RaceServiceImpl implements RaceService {
       headers: _headers(tokens),
     );
     if (response.statusCode != 200) {
-      throw Exception('Impossible de charger votre historique (${response.statusCode})');
+      throw Exception(
+        'Impossible de charger votre historique (${response.statusCode})',
+      );
     }
     final data = jsonDecode(response.body);
     if (data is! List) {

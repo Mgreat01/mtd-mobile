@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
-import 'confirmRaceCtrl.dart';
 import 'confirmRaceState.dart';
 
 class ConfirmRacePage extends ConsumerWidget {
@@ -11,21 +10,6 @@ class ConfirmRacePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen<ConfirmRaceState>(confirmRaceControllerProvider(params), (
-      previous,
-      next,
-    ) {
-      if (!next.isLoading && next.errorMessage == null) {
-        if (context.mounted) {
-          Navigator.pop(context);
-        }
-      }
-      if (next.errorMessage != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.errorMessage!)));
-      }
-    });
     final userState = ref.watch(userHomeControllerProvider);
 
     final notifier = ref.read(userHomeControllerProvider.notifier);
@@ -153,17 +137,11 @@ class ConfirmRacePage extends ConsumerWidget {
               ),
             ),
 
-            if (userState.errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                //child: Text(userState.errorMessage!, style: const TextStyle(color: Colors.red)),
-              ),
-
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(color: Colors.white),
               child: ElevatedButton(
-                onPressed: userState.isLoading
+                onPressed: userState.isLoading || userState.currentRace != null
                     ? null
                     : () async {
                         final created = await notifier.confirmBooking(

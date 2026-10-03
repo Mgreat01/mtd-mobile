@@ -20,6 +20,7 @@ class UserHomePage extends ConsumerStatefulWidget {
 
 class _UserHomePageState extends ConsumerState<UserHomePage> {
   bool _acceptanceDialogVisible = false;
+  bool _bookingPageOpen = false;
   PolylineAnnotationManager? _polylineManager;
   PolylineAnnotation? _routePolyline;
   Future<void> _drawRoute(List<List<double>> coordinates) async {
@@ -27,6 +28,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
     if (_routePolyline != null) {
       await _polylineManager!.delete(_routePolyline!);
+      _routePolyline = null;
     }
 
     final validCoordinates = coordinates
@@ -118,7 +120,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
     ref.listenManual<Map<String, dynamic>?>(
       userHomeControllerProvider.select((state) => state.bikerAcceptance),
       (previous, next) {
-        if (next != null && !_acceptanceDialogVisible) {
+        if (next != null && !_acceptanceDialogVisible && !_bookingPageOpen) {
           _showBikerAcceptanceDialog(next);
         }
       },
@@ -554,7 +556,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (state.destinationLocation == null ||
                     state.destinationAddress == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -563,7 +565,8 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                   return;
                 }
 
-                Navigator.push(
+                _bookingPageOpen = true;
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ConfirmRacePage(
@@ -580,6 +583,12 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
                     ),
                   ),
                 );
+                _bookingPageOpen = false;
+                if (!mounted || _acceptanceDialogVisible) return;
+                final acceptance = ref
+                    .read(userHomeControllerProvider)
+                    .bikerAcceptance;
+                if (acceptance != null) _showBikerAcceptanceDialog(acceptance);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,

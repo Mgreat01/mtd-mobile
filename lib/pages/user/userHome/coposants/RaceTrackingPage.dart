@@ -48,8 +48,10 @@ class RaceTrackingPage extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  if (race.status == 'pending')
-                    _buildPinCodeCard(race.pinCode ?? "----"),
+                  if (race.status == 'pending' &&
+                      race.pinCode != null &&
+                      race.pinCode!.trim().isNotEmpty)
+                    _buildPinCodeCard(race.pinCode!),
 
                   const SizedBox(height: 20),
 
@@ -358,7 +360,44 @@ class RaceTrackingPage extends ConsumerWidget {
             ? null
             : () async {
                 if (isPending) {
-                  notifier.cancelRace();
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Annuler cette course ?'),
+                      content: const Text(
+                        'La demande sera retirée si le serveur autorise encore son annulation.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('RETOUR'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('ANNULER'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !context.mounted) return;
+                  final cancelled = await notifier.cancelRace();
+                  if (!context.mounted) return;
+                  if (cancelled) {
+                    final messenger = ScaffoldMessenger.of(context);
+                    Navigator.pop(context);
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Course annulée.')),
+                    );
+                  } else {
+                    final error = ref
+                        .read(userHomeControllerProvider)
+                        .errorMessage;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error ?? 'Annulation impossible.'),
+                      ),
+                    );
+                  }
                 } else {
                   final confirmed = await showDialog<bool>(
                     context: context,

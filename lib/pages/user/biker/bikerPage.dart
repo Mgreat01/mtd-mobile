@@ -157,7 +157,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
               top: 105,
               left: 20,
               right: 20,
-              child: _buildActiveRouteCard(state, theme, colorScheme),
+              child: _buildActiveRouteCard(state, notifier, theme, colorScheme),
             ),
 
           // Bouton recentrer
@@ -220,6 +220,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
 
   Widget _buildActiveRouteCard(
     BikerState state,
+    BikerController notifier,
     ThemeData theme,
     ColorScheme colorScheme,
   ) {
@@ -268,10 +269,56 @@ class _BikerPageState extends ConsumerState<BikerPage> {
                 style: TextStyle(color: colorScheme.error, fontSize: 12),
               ),
             ],
+            if (!isOngoing) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: state.isLoading
+                      ? null
+                      : () => _confirmRaceRelease(notifier),
+                  icon: const Icon(Icons.undo),
+                  label: const Text('LIBÉRER LA COURSE'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmRaceRelease(BikerController notifier) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Libérer cette course ?'),
+        content: const Text(
+          'Vous ne serez plus assigné. La demande redeviendra visible pour les autres motards.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('RETOUR'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('LIBÉRER'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final released = await notifier.releasePendingRace();
+    if (!mounted) return;
+    final message = released
+        ? 'Course remise à disposition des autres motards.'
+        : ref.read(bikerControllerProvider).routeError ??
+              'Impossible de libérer cette course.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildRevenueCard(

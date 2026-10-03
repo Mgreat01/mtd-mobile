@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
 import 'package:moto_taxi_digital_mobile/business/models/searchResult/searchResult.dart';
@@ -7,6 +8,7 @@ import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerServi
 import 'package:moto_taxi_digital_mobile/framework/user/userNetworkServiceImpl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeCtrl.dart';
 import 'package:moto_taxi_digital_mobile/pages/user/userHome/userHomeState.dart';
+import 'package:moto_taxi_digital_mobile/pages/user/biker/bikerCtrl.dart';
 
 void main() {
   test(
@@ -62,6 +64,23 @@ void main() {
     expect(await controller.completeActiveRace(), isTrue);
     expect(controller.state.currentRace, isNull);
     expect(controller.state.step, UserStep.searching);
+    controller.dispose();
+  });
+
+  test('un motard libère une course qui redevient disponible', () async {
+    final raceService = _RaceServiceFake(_race(bikerId: 7));
+    final controller = BikerController(
+      _RefFake(),
+      bikerService: _BikerServiceFake(),
+      raceService: raceService,
+      initialize: false,
+    );
+    await controller.applyRaceUpdate(raceService.race);
+
+    expect(await controller.releasePendingRace(), isTrue);
+    expect(controller.state.activeRace, isNull);
+    expect(controller.state.races.single.status, 'pending');
+    expect(controller.state.races.single.bikerId, isNull);
     controller.dispose();
   });
 }
@@ -171,10 +190,24 @@ class _BikerServiceFake implements BikerService {
   Future<List<BikerMarkerData>> getActiveBikers() async => [];
 
   @override
+  Future<dynamic> getBalance() async => 0;
+
+  @override
+  Future<List<Race>> getCourses() async => [];
+
+  @override
+  Future<List<Race>> getBikerRaces() async => [];
+
+  @override
   Future<dynamic> getPrices() async => [
     {'id': 1, 'max_fare_per_race': 60000},
   ];
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RefFake implements Ref {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

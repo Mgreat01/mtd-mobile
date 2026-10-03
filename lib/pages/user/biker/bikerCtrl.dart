@@ -12,8 +12,8 @@ import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotifica
 import 'bikerState.dart';
 
 class BikerController extends StateNotifier<BikerState> {
-  final BikerService _bikerService = getIt.get<BikerService>();
-  final RaceService _raceService = getIt.get<RaceService>();
+  final BikerService _bikerService;
+  final RaceService _raceService;
   final Ref ref;
   StreamSubscription<Position>? _positionSubscription;
 
@@ -35,8 +35,15 @@ class BikerController extends StateNotifier<BikerState> {
 
   List<AppNotification> _oldNotifications = [];
 
-  BikerController(this.ref) : super(BikerState()) {
-    _init();
+  BikerController(
+    this.ref, {
+    BikerService? bikerService,
+    RaceService? raceService,
+    bool initialize = true,
+  }) : _bikerService = bikerService ?? getIt.get<BikerService>(),
+       _raceService = raceService ?? getIt.get<RaceService>(),
+       super(BikerState()) {
+    if (initialize) _init();
   }
 
   Future<void> _init() async {
@@ -293,6 +300,50 @@ class BikerController extends StateNotifier<BikerState> {
     );
     _lastRouteRefreshAt = null;
     _lastRouteRefreshPosition = null;
+  }
+
+  Future<bool> releasePendingRace() async {
+    final race = state.activeRace;
+    if (race == null ||
+        race.status != 'pending' ||
+        race.bikerId == null ||
+        state.isLoading) {
+      return false;
+    }
+
+    state = state.copyWith(
+      isLoading: true,
+      clearRouteError: true,
+      isRouteLoading: false,
+    );
+    try {
+      await _raceService.deletedRace(race.id);
+      if (!mounted || state.activeRace?.id != race.id) return true;
+
+      final releasedRace = Race.fromJson({
+        ...race.toJson(),
+        'status': 'pending',
+        'biker_id': null,
+      });
+      state = state.copyWith(
+        races: [
+          for (final item in state.races)
+            if (item.id == race.id) releasedRace else item,
+        ],
+        isLoading: false,
+      );
+      _clearActiveRoute();
+      unawaited(refreshData());
+      return true;
+    } catch (error) {
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          routeError: error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      return false;
+    }
   }
 
   Future<bool> _handleLocationPermission() async {

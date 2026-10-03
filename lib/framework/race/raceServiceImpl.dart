@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
@@ -17,22 +18,20 @@ class RaceServiceImpl implements RaceService {
 
   @override
   Future<Race> completedRace(dynamic race) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/races/${race['id']}/complete'),
-      headers: _headers(tokens),
-      body: jsonEncode(race),
-    );
-    final data = jsonDecode(response.body);
-    return Race.fromJson(data);
+    final raceId = int.tryParse(race['id']?.toString() ?? '');
+    if (raceId == null) throw const FormatException('Course invalide');
+    return completeRace(raceId);
   }
 
   @override
   Future<Race> completeRace(int raceId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/races/$raceId/complete'),
-      headers: _headers(tokens),
-    );
-    final data = jsonDecode(response.body);
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/races/$raceId/complete'),
+          headers: _headers(tokens),
+        )
+        .timeout(const Duration(seconds: 15));
+    final data = _tryJson(response.body);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final race = data is Map ? data['race'] : null;
@@ -51,34 +50,37 @@ class RaceServiceImpl implements RaceService {
 
   @override
   Future<Race> createRace(Race race) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/races'),
-      headers: _headers(tokens),
-      body: jsonEncode(race.toJson()),
-    );
-    final data = jsonDecode(response.body);
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/races'),
+          headers: _headers(tokens),
+          body: jsonEncode(race.toJson()),
+        )
+        .timeout(const Duration(seconds: 15));
+    final data = _tryJson(response.body);
 
     if (response.statusCode == 201 || response.statusCode == 200) {
-      final bodyy = jsonDecode(response.body);
-
-      final race = Race.fromJson(bodyy["race"]);
-
-      return race;
+      final createdRace = data is Map ? data['race'] : null;
+      if (createdRace is Map) {
+        return Race.fromJson(Map<String, dynamic>.from(createdRace));
+      }
+      throw const FormatException('Course créée absente de la réponse');
     } else {
       throw Exception(
-        data['message'] ??
-            data['error'] ??
-            'Erreur serveur (${response.statusCode})',
+        data is Map
+            ? data['message'] ??
+                  data['error'] ??
+                  'Erreur serveur (${response.statusCode})'
+            : 'Erreur serveur (${response.statusCode})',
       );
     }
   }
 
   @override
   Future<int> deletedRace(int id) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/races/$id'),
-      headers: _headers(tokens),
-    );
+    final response = await http
+        .delete(Uri.parse('$baseUrl/api/races/$id'), headers: _headers(tokens))
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_errorMessage(response, 'Annulation refusée'));
     }
@@ -102,10 +104,9 @@ class RaceServiceImpl implements RaceService {
 
   @override
   Future<Race> getRaceById(int id) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/races/$id'),
-      headers: _headers(tokens),
-    );
+    final response = await http
+        .get(Uri.parse('$baseUrl/api/races/$id'), headers: _headers(tokens))
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       throw Exception(
         _errorMessage(response, 'Impossible de charger la course'),
@@ -181,31 +182,42 @@ class RaceServiceImpl implements RaceService {
 
   @override
   Future<RaceRouteModel> getRaceRoute(int raceId) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/races/$raceId/route'),
-
-      headers: _headers(tokens),
-    );
+    final response = await http
+        .get(
+          Uri.parse('$baseUrl/api/races/$raceId/route'),
+          headers: _headers(tokens),
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return RaceRouteModel.fromJson(jsonDecode(response.body));
     }
-    throw Exception("Impossible de récupérer la route");
+    throw Exception(
+      _errorMessage(response, 'Impossible de récupérer la route'),
+    );
   }
 
   @override
   Future<RaceRouteModel> confirmPassenger(int raceId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/races/$raceId/confirmPassenger'),
-      headers: _headers(tokens),
-    );
-    final data = jsonDecode(response.body);
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/races/$raceId/confirmPassenger'),
+          headers: _headers(tokens),
+        )
+        .timeout(const Duration(seconds: 20));
+    final data = _tryJson(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return RaceRouteModel.fromJson({
         'race_id': raceId,
-        'route': data['route'],
+        'route': data is Map ? data['route'] : null,
       });
     }
-    throw Exception(data['message'] ?? 'Impossible de confirmer la course');
+    throw Exception(
+      data is Map
+          ? data['message'] ??
+                data['error'] ??
+                'Impossible de confirmer la course'
+          : 'Impossible de confirmer la course',
+    );
   }
 }

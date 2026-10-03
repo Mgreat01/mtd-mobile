@@ -73,10 +73,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       16,
       null,
     );
-    await map.flyTo(
-      camera,
-      MapAnimationOptions(duration: 1000),
-    );
+    await map.flyTo(camera, MapAnimationOptions(duration: 1000));
   }
 
   @override
@@ -221,6 +218,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
     ColorScheme colorScheme,
   ) {
     final race = state.activeRace!;
+    final isOngoing = race.status == 'ongoing';
     return Card(
       elevation: 4,
       child: Padding(
@@ -229,14 +227,16 @@ class _BikerPageState extends ConsumerState<BikerPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Course n° ${race.id} · Passager",
+              isOngoing
+                  ? "Course n° ${race.id} · Vers la destination"
+                  : "Course n° ${race.id} · Vers le passager",
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              race.startingPoint,
+              isOngoing ? race.destination : race.startingPoint,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

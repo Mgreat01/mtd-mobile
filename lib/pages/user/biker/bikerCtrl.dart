@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:moto_taxi_digital_mobile/business/models/notification/appNotification.dart';
 import 'package:moto_taxi_digital_mobile/business/models/race/race.dart';
+import 'package:moto_taxi_digital_mobile/business/services/race/raceService.dart';
 import 'package:moto_taxi_digital_mobile/business/services/user/biker/bikerService.dart';
 import 'package:moto_taxi_digital_mobile/main.dart';
 import 'package:moto_taxi_digital_mobile/framework/notification/realtimeNotificationService.dart';
@@ -12,6 +13,7 @@ import 'bikerState.dart';
 
 class BikerController extends StateNotifier<BikerState> {
   final BikerService _bikerService = getIt.get<BikerService>();
+  final RaceService _raceService = getIt.get<RaceService>();
   final Ref ref;
   StreamSubscription<Position>? _positionSubscription;
 
@@ -207,11 +209,13 @@ class BikerController extends StateNotifier<BikerState> {
   Future<void> _performRouteLoad(Race race) async {
     state = state.copyWith(clearRouteError: true, isRouteLoading: true);
     try {
-      final route = await _bikerService.getBikerPassengerTrack(
-        raceId: race.id,
-        lat: state.currentPosition.latitude,
-        lng: state.currentPosition.longitude,
-      );
+      final route = race.status == 'ongoing'
+          ? await _raceService.getRaceRoute(race.id)
+          : await _bikerService.getBikerPassengerTrack(
+              raceId: race.id,
+              lat: state.currentPosition.latitude,
+              lng: state.currentPosition.longitude,
+            );
 
       if (route == null || route.route.geometry.coordinates.length < 2) {
         throw Exception("Aucun itinéraire reçu du serveur");
@@ -249,7 +253,13 @@ class BikerController extends StateNotifier<BikerState> {
 
   void _refreshActiveRouteIfNeeded(LatLng position) {
     final race = state.activeRace;
-    if (race == null || _routeLoadInProgress != null) return;
+    // Après la prise en charge, conserver le trajet vers la destination :
+    // les mises à jour GPS ne doivent plus recalculer un retour au passager.
+    if (race == null ||
+        race.status == 'ongoing' ||
+        _routeLoadInProgress != null) {
+      return;
+    }
 
     final lastPosition = _lastRouteRefreshPosition;
     final lastRefresh = _lastRouteRefreshAt;

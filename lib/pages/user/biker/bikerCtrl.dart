@@ -18,10 +18,15 @@ class BikerController extends StateNotifier<BikerState> {
   StreamSubscription<ServiceStatus>? _gpsServiceSubscription;
 
   Timer? _notifTimer;
+  Timer? _raceStatusTimer;
+  bool _checkingRaceStatus = false;
+  bool _refreshingData = false;
+  final Map<int, String> _terminalRaceStatuses = {};
   StreamSubscription<Map<String, dynamic>>? _realtimeNotificationSubscription;
   DateTime? _lastRouteRefreshAt;
   LatLng? _lastRouteRefreshPosition;
   Future<void>? _routeLoadInProgress;
+  bool _hasRealPosition = false;
   int _locationSequence = 0;
   final String _locationSessionId =
       'mobile-${DateTime.now().toUtc().microsecondsSinceEpoch}';
@@ -38,12 +43,13 @@ class BikerController extends StateNotifier<BikerState> {
 
     // Les notifications ne doivent pas attendre le GPS ni les autres appels
     // du tableau de bord pour apparaître.
-    await fetchNotifications();
-    await _initializeRealtimeNotifications();
+    unawaited(fetchNotifications());
+    unawaited(_initializeRealtimeNotifications());
     _startNotificationPolling();
+    _startRaceStatusPolling();
 
     /// tente de récupérer la position
-    await _initializeLocation();
+    unawaited(_initializeLocation());
 
     await refreshData();
   }
@@ -95,7 +101,9 @@ class BikerController extends StateNotifier<BikerState> {
       /// tente d'abord dernière position connue
       final lastPosition = await Geolocator.getLastKnownPosition();
 
-      if (lastPosition != null) {
+      if (lastPosition != null &&
+          DateTime.now().difference(lastPosition.timestamp).abs() <
+              const Duration(minutes: 2)) {
         position = lastPosition;
       } else {
         position = await Geolocator.getCurrentPosition(
@@ -106,7 +114,13 @@ class BikerController extends StateNotifier<BikerState> {
 
       final currentLatLng = LatLng(position.latitude, position.longitude);
 
+      if (!mounted) return;
+      _hasRealPosition = true;
       state = state.copyWith(currentPosition: currentLatLng);
+      final activeRace = state.activeRace;
+      if (activeRace != null && state.routeCoordinates.isEmpty) {
+        unawaited(_loadRouteToPassenger(activeRace));
+      }
 
       print(
         "Position biker : "
@@ -139,12 +153,14 @@ class BikerController extends StateNotifier<BikerState> {
   }
 
   bool _isAssignedActiveRace(Race race) {
+    if (_terminalRaceStatuses.containsKey(race.id)) return false;
     return race.status == 'accepted' ||
         race.status == 'ongoing' ||
         (race.status == 'pending' && race.bikerId != null);
   }
 
   Future<void> applyRaceUpdate(Race race) async {
+    if (_terminalRaceStatuses.containsKey(race.id)) return;
     final races = [
       for (final existing in state.races)
         if (existing.id == race.id) race else existing,
@@ -164,6 +180,13 @@ class BikerController extends StateNotifier<BikerState> {
     Race race, {
     bool waitForCurrent = false,
   }) async {
+    if (!_hasRealPosition) {
+      state = state.copyWith(
+        routeError: 'Position GPS requise pour calculer l’itinéraire.',
+        isRouteLoading: false,
+      );
+      return;
+    }
     final currentLoad = _routeLoadInProgress;
     if (currentLoad != null) {
       if (!waitForCurrent) return;
@@ -194,6 +217,12 @@ class BikerController extends StateNotifier<BikerState> {
         throw Exception("Aucun itinéraire reçu du serveur");
       }
 
+      if (!mounted ||
+          state.activeRace?.id != race.id ||
+          state.activeRace?.status != race.status) {
+        return;
+      }
+
       state = state.copyWith(
         activeRace: race,
         routeCoordinates: route.route.geometry.coordinates,
@@ -205,6 +234,11 @@ class BikerController extends StateNotifier<BikerState> {
       _lastRouteRefreshAt = DateTime.now();
       _lastRouteRefreshPosition = state.currentPosition;
     } catch (e) {
+      if (!mounted ||
+          state.activeRace?.id != race.id ||
+          state.activeRace?.status != race.status) {
+        return;
+      }
       state = state.copyWith(
         activeRace: race,
         routeError: "Impossible de charger l'itinéraire : $e",
@@ -314,8 +348,15 @@ class BikerController extends StateNotifier<BikerState> {
   Future<void> _sendPositionToServer(Position position) async {
     final newPosition = LatLng(position.latitude, position.longitude);
 
+    if (!mounted) return;
+    final wasMissingPosition = !_hasRealPosition;
+    _hasRealPosition = true;
     state = state.copyWith(currentPosition: newPosition);
-    _refreshActiveRouteIfNeeded(newPosition);
+    if (wasMissingPosition && state.activeRace != null) {
+      unawaited(_loadRouteToPassenger(state.activeRace!));
+    } else {
+      _refreshActiveRouteIfNeeded(newPosition);
+    }
 
     print(
       "Nouvelle position : "
@@ -361,28 +402,73 @@ class BikerController extends StateNotifier<BikerState> {
   /// REFRESH DATA
   /// =========================
   Future<void> refreshData() async {
-    state = state.copyWith(isLoading: true);
+    if (!mounted || _refreshingData) return;
+
+    _refreshingData = true;
+    if (state.races.isEmpty) {
+      state = state.copyWith(isLoading: true);
+    }
 
     try {
-      final results = await Future.wait([
-        _bikerService.getBalance(),
-        _bikerService.getCourses(),
-        _bikerService.getBikerRaces(),
-        _bikerService.getPrices(),
+      final results = await Future.wait<Object?>([
+        () async {
+          try {
+            return await _bikerService.getBalance();
+          } catch (error) {
+            debugPrint('Solde biker indisponible: $error');
+            return null;
+          }
+        }(),
+        () async {
+          try {
+            return await _bikerService.getCourses();
+          } catch (error) {
+            debugPrint('Nouvelles courses indisponibles: $error');
+            return null;
+          }
+        }(),
+        () async {
+          try {
+            return await _bikerService.getBikerRaces();
+          } catch (error) {
+            debugPrint('Courses biker indisponibles: $error');
+            return null;
+          }
+        }(),
+        () async {
+          try {
+            return await _bikerService.getPrices();
+          } catch (error) {
+            debugPrint('Tarifs indisponibles: $error');
+            return null;
+          }
+        }(),
       ]);
+      if (!mounted) return;
 
-      final walletBalance = results[0].toString();
-
-      final availableRaces = results[1] as List<Race>;
-      final bikerRaces = results[2] as List<Race>;
+      final availableRaces = results[1] as List<Race>?;
+      final bikerRaces = results[2] as List<Race>?;
+      final priceLists = results[3] as List<dynamic>?;
       final racesById = <int, Race>{
-        for (final race in availableRaces) race.id: race,
-        for (final race in bikerRaces) race.id: race,
+        for (final race
+            in availableRaces ??
+                state.races.where(
+                  (race) => race.status == 'pending' && race.bikerId == null,
+                ))
+          race.id: race,
+        for (final race in bikerRaces ?? state.races) race.id: race,
       };
+      for (final entry in _terminalRaceStatuses.entries) {
+        final oldRace = racesById[entry.key];
+        if (oldRace != null) {
+          racesById[entry.key] = Race.fromJson({
+            ...oldRace.toJson(),
+            'status': entry.value,
+          });
+        }
+      }
       final allRaces = racesById.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      final List<dynamic> priceLists = results[3] as List<dynamic>;
 
       final String today = DateTime.now().toIso8601String().split('T')[0];
 
@@ -392,41 +478,58 @@ class BikerController extends StateNotifier<BikerState> {
           )
           .toList();
 
-      double dailyTotal = 0.0;
+      double dailyTotal = priceLists == null || bikerRaces == null
+          ? state.dailyRevenue
+          : 0.0;
 
-      for (var race in finishedToday) {
-        final priceObj = priceLists.firstWhere(
-          (p) => p['id'].toString() == race.priceListId.toString(),
-          orElse: () => null,
-        );
-
-        if (priceObj != null) {
-          dailyTotal +=
-              double.tryParse(priceObj['base_fare'].toString()) ?? 0.0;
+      if (priceLists != null && bikerRaces != null) {
+        for (var race in finishedToday) {
+          final priceObj = priceLists.firstWhere(
+            (p) => p['id'].toString() == race.priceListId.toString(),
+            orElse: () => null,
+          );
+          if (priceObj != null) {
+            dailyTotal +=
+                double.tryParse(
+                  (priceObj['max_fare_per_race'] ?? priceObj['base_fare'])
+                      .toString(),
+                ) ??
+                0.0;
+          }
         }
       }
 
       state = state.copyWith(
-        walletBalance: "$walletBalance CDF",
+        walletBalance: results[0] == null
+            ? state.walletBalance
+            : '${results[0]} CDF',
         races: allRaces,
-        completedRacesCount: finishedToday
-            .where((r) => r.status == 'completed')
-            .length,
+        completedRacesCount: bikerRaces == null
+            ? state.completedRacesCount
+            : finishedToday.length,
         dailyRevenue: dailyTotal,
         isLoading: false,
       );
 
-      final activeRace = allRaces.where(_isAssignedActiveRace).firstOrNull;
+      final activeRace = bikerRaces?.where(_isAssignedActiveRace).firstOrNull;
       if (activeRace != null) {
+        final previousActive = state.activeRace;
         state = state.copyWith(activeRace: activeRace);
-        await _loadRouteToPassenger(activeRace);
-      } else if (state.activeRace != null) {
+        if (state.routeCoordinates.isEmpty ||
+            previousActive?.id != activeRace.id ||
+            previousActive?.status != activeRace.status) {
+          await _loadRouteToPassenger(activeRace);
+        }
+      } else if (bikerRaces != null && state.activeRace != null) {
         _clearActiveRoute();
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false);
-
-      print("Erreur BikerController: $e");
+      debugPrint('Erreur BikerController: $e');
+    } finally {
+      _refreshingData = false;
+      if (mounted && state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
@@ -437,6 +540,50 @@ class BikerController extends StateNotifier<BikerState> {
       const Duration(minutes: 1),
       (_) => fetchNotifications(),
     );
+  }
+
+  void _startRaceStatusPolling() {
+    _raceStatusTimer?.cancel();
+    _raceStatusTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(_syncActiveRaceStatus());
+    });
+  }
+
+  Future<void> _syncActiveRaceStatus() async {
+    final activeRace = state.activeRace;
+    if (!mounted || activeRace == null || _checkingRaceStatus) return;
+    _checkingRaceStatus = true;
+    try {
+      final races = await _bikerService.getBikerRaces();
+      if (!mounted || state.activeRace?.id != activeRace.id) return;
+      final updated = races
+          .where((race) => race.id == activeRace.id)
+          .firstOrNull;
+      if (updated == null) return;
+      if (updated.status == 'completed' || updated.status == 'cancelled') {
+        _markRaceTerminal(updated.id, updated.status);
+      } else if (updated.status != activeRace.status) {
+        await applyRaceUpdate(updated);
+      }
+    } catch (error) {
+      debugPrint('Vérification de la course biker impossible: $error');
+    } finally {
+      _checkingRaceStatus = false;
+    }
+  }
+
+  void _markRaceTerminal(int raceId, String status) {
+    _terminalRaceStatuses[raceId] = status;
+    state = state.copyWith(
+      races: [
+        for (final race in state.races)
+          if (race.id == raceId)
+            Race.fromJson({...race.toJson(), 'status': status})
+          else
+            race,
+      ],
+    );
+    if (state.activeRace?.id == raceId) _clearActiveRoute();
   }
 
   Future<void> _initializeRealtimeNotifications() async {
@@ -480,9 +627,8 @@ class BikerController extends StateNotifier<BikerState> {
     final raceId = int.tryParse(payload['race_id']?.toString() ?? '');
     if (raceId == null) return;
     final status = payload['status']?.toString();
-    if (state.activeRace?.id == raceId &&
-        (status == 'completed' || status == 'cancelled')) {
-      _clearActiveRoute();
+    if (status == 'completed' || status == 'cancelled') {
+      _markRaceTerminal(raceId, status!);
     }
     await refreshData();
   }
@@ -493,6 +639,7 @@ class BikerController extends StateNotifier<BikerState> {
     if (raceJson is! Map || routeJson is! Map) return;
     try {
       final race = Race.fromJson(Map<String, dynamic>.from(raceJson));
+      if (_terminalRaceStatuses.containsKey(race.id)) return;
       final route = RaceRouteModel.fromJson({
         'race_id': race.id,
         'route': Map<String, dynamic>.from(routeJson),
@@ -592,6 +739,7 @@ class BikerController extends StateNotifier<BikerState> {
     _gpsServiceSubscription?.cancel();
 
     _notifTimer?.cancel();
+    _raceStatusTimer?.cancel();
     _realtimeNotificationSubscription?.cancel();
 
     super.dispose();

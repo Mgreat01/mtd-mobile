@@ -23,7 +23,9 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
   bool _bookingPageOpen = false;
   PolylineAnnotationManager? _polylineManager;
   PolylineAnnotation? _routePolyline;
+  int _routeRenderVersion = 0;
   Future<void> _drawRoute(List<List<double>> coordinates) async {
+    final renderVersion = ++_routeRenderVersion;
     if (_polylineManager == null) return;
 
     if (_routePolyline != null) {
@@ -39,7 +41,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
 
     final line = LineString(coordinates: validCoordinates);
 
-    _routePolyline = await _polylineManager!.create(
+    final polyline = await _polylineManager!.create(
       PolylineAnnotationOptions(
         geometry: line,
 
@@ -50,6 +52,11 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
         lineOpacity: 0.9,
       ),
     );
+    if (renderVersion != _routeRenderVersion) {
+      await _polylineManager!.delete(polyline);
+      return;
+    }
+    _routePolyline = polyline;
 
     final map = _mapboxMap;
     if (map == null) return;
@@ -60,6 +67,7 @@ class _UserHomePageState extends ConsumerState<UserHomePage> {
       16,
       null,
     );
+    if (renderVersion != _routeRenderVersion) return;
     await map.flyTo(camera, MapAnimationOptions(duration: 900));
   }
 

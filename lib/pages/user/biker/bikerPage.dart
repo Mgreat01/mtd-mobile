@@ -56,13 +56,18 @@ class _BikerPageState extends ConsumerState<BikerPage> {
     _routePolyline = polyline;
 
     final markerData = await rootBundle.load('assets/images/location.png');
-    _passengerMarker = await _pointManager!.create(
+    final marker = await _pointManager!.create(
       PointAnnotationOptions(
         geometry: Point(coordinates: coordinates.last),
         image: markerData.buffer.asUint8List(),
         iconSize: 0.12,
       ),
     );
+    if (renderVersion != _routeRenderVersion) {
+      await _pointManager!.delete(marker);
+      return;
+    }
+    _passengerMarker = marker;
 
     final map = _mapboxMap;
     if (map == null) return;
@@ -73,6 +78,7 @@ class _BikerPageState extends ConsumerState<BikerPage> {
       16,
       null,
     );
+    if (renderVersion != _routeRenderVersion) return;
     await map.flyTo(camera, MapAnimationOptions(duration: 1000));
   }
 

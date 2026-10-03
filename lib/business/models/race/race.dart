@@ -173,24 +173,32 @@ class Geometry {
       throw const FormatException("Géométrie d'itinéraire invalide");
     }
 
-    final coordinates = rawCoordinates.map((coordinate) {
-      if (coordinate is! List || coordinate.length < 2) {
-        throw const FormatException("Coordonnée d'itinéraire invalide");
-      }
-      final longitude = double.tryParse(coordinate[0].toString());
-      final latitude = double.tryParse(coordinate[1].toString());
-      if (longitude == null || latitude == null ||
-          longitude < -180 || longitude > 180 ||
-          latitude < -90 || latitude > 90) {
-        throw const FormatException("Coordonnée Mapbox hors limites");
-      }
-      return <double>[longitude, latitude];
-    }).toList(growable: false);
+    final coordinates = rawCoordinates
+        .map((coordinate) {
+          if (coordinate is! List || coordinate.length < 2) {
+            throw const FormatException("Coordonnée d'itinéraire invalide");
+          }
+          final longitude = double.tryParse(coordinate[0].toString());
+          final latitude = double.tryParse(coordinate[1].toString());
+          if (longitude == null ||
+              latitude == null ||
+              longitude < -180 ||
+              longitude > 180 ||
+              latitude < -90 ||
+              latitude > 90) {
+            throw const FormatException("Coordonnée Mapbox hors limites");
+          }
+          return <double>[longitude, latitude];
+        })
+        .toList(growable: false);
 
-    return Geometry(
-      type: json['type'].toString(),
-      coordinates: coordinates,
-    );
+    if (coordinates.length < 2) {
+      throw const FormatException(
+        "L'itinéraire doit contenir au moins deux coordonnées",
+      );
+    }
+
+    return Geometry(type: json['type'].toString(), coordinates: coordinates);
   }
 
   Map<String, dynamic> toJson() {

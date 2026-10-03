@@ -184,6 +184,9 @@ class UserHomeController extends StateNotifier<UserHomeState> {
           : null,
       clearBikerAcceptance: !needsConfirmation,
     );
+    if (state.estimatedFare == null && race.priceListId != null) {
+      unawaited(loadEstimatedFare(race.priceListId!));
+    }
   }
 
   Future<void> _syncActiveRace() async {

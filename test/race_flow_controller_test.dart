@@ -171,5 +171,10 @@ class _BikerServiceFake implements BikerService {
   Future<List<BikerMarkerData>> getActiveBikers() async => [];
 
   @override
+  Future<dynamic> getPrices() async => [
+    {'id': 1, 'max_fare_per_race': 60000},
+  ];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -13,7 +13,16 @@ class RaceTrackingPage extends ConsumerWidget {
     final race = state.currentRace;
 
     if (race == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Course terminée')),
+        body: Center(
+          child: FilledButton.icon(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('RETOUR À L’ACCUEIL'),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -44,7 +53,23 @@ class RaceTrackingPage extends ConsumerWidget {
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 children: [
-                  _buildBikerInfoCard(state),
+                  if (race.bikerId != null)
+                    _buildBikerInfoCard(state)
+                  else
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Text('Recherche d’un motard disponible…'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 20),
 
@@ -59,7 +84,7 @@ class RaceTrackingPage extends ConsumerWidget {
 
                   const SizedBox(height: 25),
 
-                  _buildPriceSummary(race),
+                  _buildPriceSummary(state),
 
                   const SizedBox(height: 40),
 
@@ -125,7 +150,7 @@ class RaceTrackingPage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            "Donnez ce code au motard pour démarrer la course",
+            "Code de référence de la course",
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
@@ -141,85 +166,35 @@ class RaceTrackingPage extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
+        child: Row(
           children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Color(0xFF008E53),
-                  child: Icon(Icons.person, color: Colors.white, size: 35),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.selectedBiker?.name ?? "Chargement...",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const Text(
-                        "Moto vérifiée • Kinshasa",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                const Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.amber, size: 18),
-                        Text(
-                          " 4.8",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      "Note",
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
+            const CircleAvatar(
+              radius: 30,
+              backgroundColor: Color(0xFF008E53),
+              child: Icon(Icons.person, color: Colors.white, size: 35),
             ),
-            const Divider(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildCircleAction(Icons.call, "Appeler", Colors.green),
-                _buildCircleAction(Icons.message, "Message", Colors.blue),
-                _buildCircleAction(Icons.security, "SOS", Colors.red),
-              ],
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.selectedBiker?.name ?? 'Motard assigné',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const Text(
+                    'Position mise à jour pendant la course',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCircleAction(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 
@@ -294,7 +269,11 @@ class RaceTrackingPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildPriceSummary(dynamic race) {
+  Widget _buildPriceSummary(UserHomeState state) {
+    final fare = state.estimatedFare;
+    final fareLabel = fare == null
+        ? 'Tarif indisponible'
+        : '${fare.toStringAsFixed(0)} FC';
     return Column(
       children: [
         Row(
@@ -305,7 +284,7 @@ class RaceTrackingPage extends ConsumerWidget {
               style: TextStyle(color: Colors.grey, fontSize: 15),
             ),
             Text(
-              "${race.priceListId == 1 ? '10 000' : '8 000'} FC",
+              fareLabel,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -351,6 +330,7 @@ class RaceTrackingPage extends ConsumerWidget {
   ) {
     final isPending = race.status == 'pending';
     final isOngoing = race.status == 'ongoing';
+    final isAwaitingPassenger = isPending && race.bikerId != null;
 
     return SizedBox(
       width: double.infinity,
@@ -360,6 +340,17 @@ class RaceTrackingPage extends ConsumerWidget {
             ? null
             : () async {
                 if (isPending) {
+                  if (isAwaitingPassenger) {
+                    await notifier.confirmAcceptedBiker();
+                    if (!context.mounted) return;
+                    final updatedState = ref.read(userHomeControllerProvider);
+                    if (updatedState.errorMessage != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(updatedState.errorMessage!)),
+                      );
+                    }
+                    return;
+                  }
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (dialogContext) => AlertDialog(
@@ -445,7 +436,9 @@ class RaceTrackingPage extends ConsumerWidget {
               },
         style: ElevatedButton.styleFrom(
           backgroundColor: isPending
-              ? Colors.redAccent
+              ? isAwaitingPassenger
+                    ? const Color(0xFF008E53)
+                    : Colors.redAccent
               : const Color(0xFF008E53),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
@@ -454,7 +447,9 @@ class RaceTrackingPage extends ConsumerWidget {
         ),
         child: Text(
           isPending
-              ? "ANNULER LA COURSE"
+              ? isAwaitingPassenger
+                    ? "CONFIRMER LE MOTARD"
+                    : "ANNULER LA COURSE"
               : isOngoing
               ? "TERMINER LA COURSE"
               : "COURSE TERMINÉE",
